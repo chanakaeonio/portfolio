@@ -63,6 +63,7 @@ header{display:flex;align-items:center;justify-content:space-between;flex-wrap:w
 /* ─── TICKER ─── */
 .ticker{background:var(--card-bg,var(--s1));border:1px solid var(--card-border,var(--border));border-radius:7px;overflow:hidden;height:32px;display:flex;align-items:center;margin-bottom:14px}
 .tk-inner{display:flex;gap:32px;padding:0 12px;animation:tick 35s linear infinite;white-space:nowrap}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 @keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 .ti{font-family:var(--mono);font-size:.68rem;display:inline-flex;align-items:center;gap:5px}
 .ti-s{color:var(--gold);font-weight:600}.ti-p{color:var(--text2)}
@@ -291,11 +292,53 @@ body[data-bg-theme="light-blue"]{--bg:#d6ffff;--s1:#c4fbff;--s2:#eaffff;--s3:#b0
 /* Body uses --bg from theme when set */
 body { background: var(--bg, #07090d); }
 
+
+/* ─── SIDEBAR NAV ─── */
+body{display:flex;min-height:100vh;overflow-x:hidden}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:210px;background:var(--card-bg,var(--s1));border-right:1px solid var(--border);z-index:500;display:flex;flex-direction:column;transition:width .25s ease;overflow:hidden}
+.sidebar.collapsed{width:50px}
+.sb-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 10px 12px;border-bottom:1px solid var(--border);flex-shrink:0;gap:8px}
+.sb-logo{font-size:.78rem;font-weight:700;color:var(--gold);white-space:nowrap;overflow:hidden;opacity:1;transition:opacity .15s;flex:1}
+.sidebar.collapsed .sb-logo{opacity:0;width:0;flex:0}
+.sb-toggle{background:none;border:1px solid var(--border);border-radius:6px;color:var(--text2);cursor:pointer;font-size:.85rem;padding:4px 7px;flex-shrink:0;line-height:1;transition:all .2s}
+.sb-toggle:hover{border-color:var(--gold);color:var(--gold)}
+.sb-tabs{display:flex;flex-direction:column;gap:2px;padding:10px 6px;overflow-y:auto;overflow-x:hidden}
+.sb-tab{display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:8px;border:none;background:transparent;color:var(--text2);cursor:pointer;font-family:var(--fn);font-size:.78rem;font-weight:500;text-align:left;white-space:nowrap;transition:all .18s;width:100%}
+.sb-tab:hover{background:rgba(255,255,255,.05);color:var(--text)}
+.sb-tab.active{background:rgba(232,184,109,.12);color:var(--gold);font-weight:700}
+.sb-ic{font-size:.95rem;flex-shrink:0;width:22px;text-align:center}
+.sb-lbl{overflow:hidden;opacity:1;transition:opacity .15s;max-width:160px}
+.sidebar.collapsed .sb-lbl{opacity:0;max-width:0}
+.sb-sep{height:1px;background:var(--border);margin:5px 4px}
+/* Main area shifts right */
+.wrap{margin-left:210px;transition:margin-left .25s ease;flex:1;min-width:0}
+.sidebar.collapsed~.wrap{margin-left:50px}
+/* Tab panels */
+.tab-panel{display:none}
+.tab-panel.active{display:block}
 </style>
 </head>
 <body>
+<nav class="sidebar" id="sidebar">
+  <div class="sb-hdr">
+    <span class="sb-logo">◈ Portfolio</span>
+    <button class="sb-toggle" onclick="toggleSidebar()" title="ย่อ/ขยาย">☰</button>
+  </div>
+  <div class="sb-tabs">
+    <button class="sb-tab active" data-tab="overview" onclick="showTab('overview')"><span class="sb-ic">📊</span><span class="sb-lbl">ภาพรวม</span></button>
+    <button class="sb-tab" data-tab="charts"   onclick="showTab('charts')"  ><span class="sb-ic">📈</span><span class="sb-lbl">กราฟพอร์ต</span></button>
+    <button class="sb-tab" data-tab="holdings" onclick="showTab('holdings')"><span class="sb-ic">💼</span><span class="sb-lbl">สินทรัพย์</span></button>
+    <button class="sb-tab" data-tab="history"  onclick="showTab('history')" ><span class="sb-ic">📋</span><span class="sb-lbl">ประวัติรายการ</span></button>
+    <div class="sb-sep"></div>
+    <button class="sb-tab" data-tab="goal"     onclick="showTab('goal')"    ><span class="sb-ic">🎯</span><span class="sb-lbl">เป้าหมาย DCA</span></button>
+    <button class="sb-tab" data-tab="dca"      onclick="showTab('dca')"     ><span class="sb-ic">📅</span><span class="sb-lbl">ตาราง DCA</span></button>
+    <div class="sb-sep"></div>
+    <button class="sb-tab" data-tab="stock"    onclick="showTab('stock')"   ><span class="sb-ic">🔍</span><span class="sb-lbl">วิเคราะห์หุ้น</span></button>
+  </div>
+</nav>
 <div class="wrap">
 
+<div id="tab-overview" class="tab-panel active">
 <div class="theme-bar" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
   <span style="font-size:0.65rem;color:var(--muted);font-weight:600;text-transform:uppercase;">🎨 Accent Color:</span>
   <div id="themeBtns" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
@@ -332,7 +375,9 @@ body { background: var(--bg, #07090d); }
 <div class="ticker"><div class="tk-inner" id="tkEl"></div></div>
 
 <div class="stats" id="statsEl"></div>
+</div><!-- /tab-panel overview -->
 
+<div id="tab-goal" class="tab-panel">
 <div class="row2">
   <div class="card">
     <div class="card-h"><h3>🎯 Goal Tracker</h3></div>
@@ -420,6 +465,9 @@ body { background: var(--bg, #07090d); }
   </div>
 </div>
 
+</div><!-- /tab-panel goal -->
+
+<div id="tab-charts" class="tab-panel">
 <div class="row3">
   <div class="card">
     <div class="card-h">
@@ -444,6 +492,9 @@ body { background: var(--bg, #07090d); }
   </div>
 </div>
 
+</div><!-- /tab-panel charts -->
+
+<div id="tab-holdings" class="tab-panel">
 <div class="card full">
   <div class="card-h">
     <h3>📊 สินทรัพย์ที่ถือ</h3>
@@ -467,6 +518,9 @@ body { background: var(--bg, #07090d); }
   </div>
 </div>
 
+</div><!-- /tab-panel holdings -->
+
+<div id="tab-history" class="tab-panel">
 <div class="card full">
   <div class="card-h">
     <h3>📋 ประวัติรายการ <span id="txCount" class="note"></span></h3>
@@ -486,6 +540,9 @@ body { background: var(--bg, #07090d); }
   </div>
 </div>
 
+</div><!-- /tab-panel history -->
+
+<div id="tab-dca" class="tab-panel">
 <div class="card full">
   <div class="card-h">
     <h3>📅 เป้าหมาย DCA รายเดือน</h3>
@@ -519,10 +576,14 @@ body { background: var(--bg, #07090d); }
   </div>
 </div>
 
+</div><!-- /tab-panel dca -->
+
+<div id="tab-stock" class="tab-panel">
 <div class="card full">
   <div class="card-h">
     <h3>🔍 วิเคราะห์ราคาหุ้น — จุดซื้อขาย</h3>
     <span id="stockStat" class="note">เลือกหุ้นด้านล่างเพื่อดูกราฟ</span>
+    <span id="liveCountdown" style="font-size:.65rem;display:none;align-items:center;gap:5px;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.25);border-radius:6px;padding:3px 9px;color:#34d399;font-family:var(--mono)"></span>
   </div>
   <div id="stockTickerSel" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px"></div>
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
@@ -543,7 +604,9 @@ body { background: var(--bg, #07090d); }
 </div>
 <div class="sp-stats" id="spStats"></div>
 
-</div><div class="ov" id="txMod" onclick="bgClose(event,'txMod')">
+</div><!-- /tab-panel stock -->
+
+<div class="ov" id="txMod" onclick="bgClose(event,'txMod')">
 <div class="modal">
   <div class="m-h"><h2 id="txTitle">+ เพิ่มรายการ</h2><button class="m-x" onclick="closeModal('txMod')">✕</button></div>
   <div class="fg2">
@@ -577,6 +640,38 @@ body { background: var(--bg, #07090d); }
 </div>
 
 <script>
+/* ─── SIDEBAR & TAB SYSTEM ─── */
+function showTab(id){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.sb-tab').forEach(b=>b.classList.remove('active'));
+  const panel=document.getElementById('tab-'+id);
+  if(panel)panel.classList.add('active');
+  const btn=document.querySelector(`.sb-tab[data-tab="${id}"]`);
+  if(btn)btn.classList.add('active');
+  localStorage.setItem('pTab_v1',id);
+  // Refresh charts that need visible canvas
+  setTimeout(()=>{
+    if(id==='charts'){try{renderMainChart();}catch(e){}try{renderDonut();}catch(e){}}
+    if(id==='goal'){try{renderGoal();}catch(e){}try{renderPsChart();}catch(e){}}
+    if(id==='dca'){try{renderPsChart();}catch(e){}try{renderGoalGrid();}catch(e){}}
+    if(id==='stock'&&selTicker){try{renderStockChart(selTicker,stockHistCache[selTicker]);}catch(e){}}
+    // Fix tx table height
+    const w=document.getElementById('txTableWrap');
+    if(w&&id==='history')w.style.maxHeight=w.scrollHeight+'px';
+  },60);
+}
+
+function toggleSidebar(){
+  const sb=document.getElementById('sidebar');
+  sb.classList.toggle('collapsed');
+  localStorage.setItem('pSb_v1',sb.classList.contains('collapsed')?'1':'0');
+  // After transition, refresh charts in active tab
+  setTimeout(()=>{
+    const active=document.querySelector('.tab-panel.active');
+    if(active&&active.id==='tab-charts'){try{renderMainChart();}catch(e){}try{renderDonut();}catch(e){}}
+  },280);
+}
+
 /* ═══════════════════════════════════════════
    THEMES (15 Colors)
 ═══════════════════════════════════════════ */
@@ -984,19 +1079,20 @@ function getPxBadge(ticker){
    RENDER
 ═══════════════════════════════════════════ */
 function renderAll(){
-  renderTicker();
-  renderStats();
-  renderGoal();
-  renderPeriods();
-  renderMainChart();
-  renderDonut();
-  renderHoldingsTable();
-  renderTxTable();
-  renderGoalGrid();
-  renderPsChart();
-  renderStockTickerSel();
-  renderSpStats();
-  updateCurUI();
+  const run=(fn)=>{try{fn();}catch(e){console.warn('[renderAll]',fn.name,e);}};
+  run(renderTicker);
+  run(renderStats);
+  run(renderGoal);
+  run(renderPeriods);
+  run(renderMainChart);
+  run(renderDonut);
+  run(renderHoldingsTable);
+  run(renderTxTable);
+  run(renderGoalGrid);
+  run(renderPsChart);
+  run(renderStockTickerSel);
+  run(renderSpStats);
+  run(updateCurUI);
   save();
 }
 
@@ -1484,6 +1580,8 @@ const YF_TICKER={
 
 function renderStockTickerSel(){
   const tickers=[...new Set(txs.map(t=>t.ticker))];
+  // Auto-select first ticker if none selected and tickers exist
+  if(!selTicker && tickers.length>0) selTicker=tickers[0];
   document.getElementById('stockTickerSel').innerHTML=tickers.map(t=>`
     <button class="stock-tick-btn ${t===selTicker?'on':''}" onclick="selectStockTicker('${t}')">${t}</button>`).join('');
 }
@@ -1491,6 +1589,7 @@ function renderStockTickerSel(){
 function selectStockTicker(ticker){
   selTicker=ticker;
   renderStockTickerSel();
+  stopStockRealtime();
   loadStockChart(ticker);
 }
 
@@ -1543,6 +1642,67 @@ async function loadStockChart(ticker){
   stockHistCache[ticker]=data;
   statusEl.textContent=`✅ ${ticker} · กราฟย้อนหลัง ${data.length} สัปดาห์`;
   renderStockChart(ticker,data);
+  startStockRealtime(ticker);
+}
+
+/* ─── REAL-TIME STOCK CHART ─── */
+let rtTimer=null, rtCdTimer=null, rtSec=30;
+
+function startStockRealtime(ticker){
+  stopStockRealtime();
+  rtSec=30;
+  showRtBadge();
+  rtCdTimer=setInterval(()=>{
+    rtSec--;
+    if(rtSec<=0){ rtSec=30; refreshLivePrice(ticker); }
+    showRtBadge();
+  },1000);
+}
+
+function stopStockRealtime(){
+  if(rtTimer){clearInterval(rtTimer);rtTimer=null;}
+  if(rtCdTimer){clearInterval(rtCdTimer);rtCdTimer=null;}
+  const el=document.getElementById('liveCountdown');
+  if(el){el.style.display='none';}
+}
+
+function showRtBadge(){
+  const el=document.getElementById('liveCountdown');
+  if(!el)return;
+  el.style.display='inline-flex';
+  el.innerHTML=`<span style="width:7px;height:7px;border-radius:50%;background:#34d399;display:inline-block;animation:pulse 1s infinite"></span> LIVE · ${rtSec}s`;
+}
+
+async function refreshLivePrice(ticker){
+  const cgId=CG_MAP[ticker];
+  const yfTick=YF_TICKER[ticker]||ticker;
+  let price=null;
+  try{
+    if(cgId){
+      const r=await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${cgId}&vs_currencies=usd,thb`,{signal:AbortSignal.timeout(6000)});
+      const j=await r.json();
+      price=TICKER_CUR[ticker]==='USD'?j[cgId]?.usd:j[cgId]?.thb;
+    }else{
+      const proxy='https://api.allorigins.win/raw?url=';
+      const url=`https://query1.finance.yahoo.com/v8/finance/chart/${yfTick}?interval=1d&range=1d`;
+      const r=await fetch(proxy+encodeURIComponent(url),{signal:AbortSignal.timeout(6000)});
+      const j=await r.json();
+      const meta=j.chart?.result?.[0]?.meta;
+      price=meta?.regularMarketPrice||meta?.previousClose;
+    }
+  }catch(e){}
+  if(!price||!stockHistCache[ticker]?.length)return;
+  prices[ticker]=price;
+  const data=stockHistCache[ticker];
+  const now=new Date();
+  const last=data[data.length-1];
+  if(new Date(last.x).toDateString()===now.toDateString()){
+    data[data.length-1]={x:now,y:price};
+  }else{
+    data.push({x:now,y:price});
+  }
+  renderStockChart(ticker,data);
+  document.getElementById('stockStat').textContent=`✅ ${ticker} · อัปเดตล่าสุด ${now.toLocaleTimeString('th-TH')}`;
 }
 
 function renderStockChart(ticker,histData){
@@ -1775,6 +1935,13 @@ buildBgThemePicker();
 document.body.setAttribute('data-bg-theme', curBgTheme);
 const _bgt = BG_THEMES.find(x => x.id === curBgTheme);
 if (_bgt && document.getElementById('bgDot')) document.getElementById('bgDot').style.background = _bgt.hex;
+
+// Restore sidebar collapse state
+if(localStorage.getItem('pSb_v1')==='1') document.getElementById('sidebar').classList.add('collapsed');
+// Restore last active tab
+const _lastTab=localStorage.getItem('pTab_v1')||'overview';
+showTab(_lastTab);
+
 renderAll();
 setTimeout(()=>{
   const w=document.getElementById('txTableWrap');
@@ -1783,6 +1950,16 @@ setTimeout(()=>{
 
 // Auto-fetch prices on load
 setTimeout(fetchAllPrices,1200);
+
+// Auto-load กราฟหุ้นตัวแรกอัตโนมัติ
+setTimeout(()=>{
+  const tickers=[...new Set(txs.map(t=>t.ticker))];
+  if(tickers.length>0 && !selTicker){
+    selectStockTicker(tickers[0]);
+  } else if(selTicker){
+    selectStockTicker(selTicker);
+  }
+},2000);
 
 function buildBgThemePicker() {
   const grid = document.getElementById('btpGrid');
