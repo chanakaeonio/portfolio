@@ -727,7 +727,6 @@ function showTab(id){
   localStorage.setItem('pTab_v1',id);
 
   if(id==='all'){
-    // Show all panels at once
     document.querySelectorAll('.tab-panel').forEach(p=>p.classList.add('active'));
     setTimeout(()=>{
       try{renderMainChart();}catch(e){}
@@ -750,6 +749,7 @@ function showTab(id){
     if(id==='goal'){try{renderGoal();}catch(e){}try{renderPsChart();}catch(e){}}
     if(id==='dca'){try{renderPsChart();}catch(e){}try{renderGoalGrid();}catch(e){}}
     if(id==='stock'&&selTicker){try{renderStockChart(selTicker,stockHistCache[selTicker]);}catch(e){}}
+    if(id==='global'&&Object.keys(gmData).length===0){gmFetchAll();}
     const w=document.getElementById('txTableWrap');
     if(w&&id==='history')w.style.maxHeight=w.scrollHeight+'px';
   },60);
@@ -2294,14 +2294,7 @@ function gmStartTimer(){
   },1000);
 }
 
-// Auto-load when tab is opened
-const _origShowTab=showTab;
-showTab=function(id){
-  _origShowTab(id);
-  if(id==='global'&&Object.keys(gmData).length===0) gmFetchAll();
-};
-
-
+document.addEventListener('click', e => {
   const p = document.getElementById('bgThemePanel');
   const b = document.getElementById('bgThemeBtn');
   if (p && !p.contains(e.target) && b && !b.contains(e.target))
