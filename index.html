@@ -6,6 +6,7 @@
 <title>Portfolio Tracker — DCA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
@@ -256,7 +257,22 @@ header{display:flex;align-items:center;justify-content:space-between;flex-wrap:w
 .pick:hover{border-color:var(--gold);color:var(--gold)}
 .prev{background:var(--s2);border-radius:6px;padding:9px 11px;font-size:.77rem;color:var(--text2);display:none;margin-top:6px}
 
-/* ─── BACKGROUND THEMES (PortfolioTracker Style) ─── */
+/* ─── GLOBAL MARKETS ─── */
+.gm-cat{background:none;border:none;border-bottom:2px solid transparent;padding:10px 14px;font-size:.72rem;font-weight:600;color:var(--muted);cursor:pointer;font-family:var(--fn);white-space:nowrap;transition:all .18s;display:flex;align-items:center;gap:5px}
+.gm-cat:hover{color:var(--text)}
+.gm-cat.on{color:var(--gold);border-bottom-color:var(--gold)}
+.gm-card{background:var(--card-bg,var(--s1));padding:14px 16px;cursor:default;transition:background .15s;display:flex;flex-direction:column;gap:6px}
+.gm-card:hover{background:var(--s2)}
+.gm-ticker{font-size:.78rem;font-weight:700;color:var(--text);letter-spacing:-.01em}
+.gm-name{font-size:.6rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+.gm-price{font-family:var(--mono);font-size:1.05rem;font-weight:600;color:var(--text)}
+.gm-chg{font-family:var(--mono);font-size:.7rem;font-weight:600;padding:2px 7px;border-radius:99px}
+.gm-chg.up{background:rgba(52,211,153,.12);color:#34d399}
+.gm-chg.dn{background:rgba(248,113,113,.12);color:#f87171}
+.gm-chg.flat{background:rgba(255,255,255,.05);color:var(--muted)}
+.gm-exch{font-size:.55rem;color:var(--muted);letter-spacing:.05em;text-transform:uppercase}
+.gm-spark{height:36px;margin-top:2px}
+
 body[data-bg-theme="dark-black"]{--bg:#000000;--s1:#111118;--s2:#1a1a24;--s3:#22222e;--card-bg:#111118;--card-shadow:0 4px 20px rgba(0,0,0,.7);--card-border:rgba(255,255,255,.09);--text:#dde4f0;--text2:#8896aa;--muted:#4a5568;--border:rgba(255,255,255,.09);--b2:rgba(255,255,255,.04)}
 body[data-bg-theme="dark-gray"]{--bg:#595959;--s1:#6a6a6a;--s2:rgba(0,0,0,.2);--s3:rgba(0,0,0,.3);--card-bg:#707070;--card-shadow:0 4px 18px rgba(0,0,0,.5);--card-border:rgba(255,255,255,.14);--text:#f0f0f0;--text2:#c8c8c8;--muted:#909090;--border:rgba(255,255,255,.14);--b2:rgba(255,255,255,.08)}
 body[data-bg-theme="teal"]{--bg:#00b5c8;--s1:#00a4b8;--s2:rgba(0,0,0,.06);--s3:rgba(0,0,0,.10);--card-bg:#ffffff;--card-shadow:0 6px 28px rgba(0,80,100,.22);--card-border:rgba(0,100,120,.14);--text:#00272e;--text2:#1a5a68;--muted:#5a9098;--border:rgba(0,0,0,.09);--b2:rgba(0,0,0,.05)}
@@ -322,18 +338,48 @@ body{display:flex;min-height:100vh;overflow-x:hidden}
 <nav class="sidebar" id="sidebar">
   <div class="sb-hdr">
     <span class="sb-logo">◈ Portfolio</span>
-    <button class="sb-toggle" onclick="toggleSidebar()" title="ย่อ/ขยาย">☰</button>
+    <button class="sb-toggle" onclick="toggleSidebar()" title="ย่อ/ขยาย"><i class="fa-solid fa-bars"></i></button>
   </div>
   <div class="sb-tabs">
-    <button class="sb-tab active" data-tab="overview" onclick="showTab('overview')"><span class="sb-ic">📊</span><span class="sb-lbl">ภาพรวม</span></button>
-    <button class="sb-tab" data-tab="charts"   onclick="showTab('charts')"  ><span class="sb-ic">📈</span><span class="sb-lbl">กราฟพอร์ต</span></button>
-    <button class="sb-tab" data-tab="holdings" onclick="showTab('holdings')"><span class="sb-ic">💼</span><span class="sb-lbl">สินทรัพย์</span></button>
-    <button class="sb-tab" data-tab="history"  onclick="showTab('history')" ><span class="sb-ic">📋</span><span class="sb-lbl">ประวัติรายการ</span></button>
+    <button class="sb-tab" data-tab="all" onclick="showTab('all')">
+      <span class="sb-ic"><i class="fa-solid fa-grip"></i></span>
+      <span class="sb-lbl">ทั้งหมด</span>
+    </button>
     <div class="sb-sep"></div>
-    <button class="sb-tab" data-tab="goal"     onclick="showTab('goal')"    ><span class="sb-ic">🎯</span><span class="sb-lbl">เป้าหมาย DCA</span></button>
-    <button class="sb-tab" data-tab="dca"      onclick="showTab('dca')"     ><span class="sb-ic">📅</span><span class="sb-lbl">ตาราง DCA</span></button>
+    <button class="sb-tab active" data-tab="overview" onclick="showTab('overview')">
+      <span class="sb-ic"><i class="fa-solid fa-chart-bar"></i></span>
+      <span class="sb-lbl">ภาพรวม</span>
+    </button>
+    <button class="sb-tab" data-tab="charts" onclick="showTab('charts')">
+      <span class="sb-ic"><i class="fa-solid fa-chart-line"></i></span>
+      <span class="sb-lbl">กราฟพอร์ต</span>
+    </button>
+    <button class="sb-tab" data-tab="holdings" onclick="showTab('holdings')">
+      <span class="sb-ic"><i class="fa-solid fa-wallet"></i></span>
+      <span class="sb-lbl">สินทรัพย์</span>
+    </button>
+    <button class="sb-tab" data-tab="history" onclick="showTab('history')">
+      <span class="sb-ic"><i class="fa-solid fa-list"></i></span>
+      <span class="sb-lbl">ประวัติรายการ</span>
+    </button>
     <div class="sb-sep"></div>
-    <button class="sb-tab" data-tab="stock"    onclick="showTab('stock')"   ><span class="sb-ic">🔍</span><span class="sb-lbl">วิเคราะห์หุ้น</span></button>
+    <button class="sb-tab" data-tab="goal" onclick="showTab('goal')">
+      <span class="sb-ic"><i class="fa-solid fa-bullseye"></i></span>
+      <span class="sb-lbl">เป้าหมาย DCA</span>
+    </button>
+    <button class="sb-tab" data-tab="dca" onclick="showTab('dca')">
+      <span class="sb-ic"><i class="fa-solid fa-calendar-days"></i></span>
+      <span class="sb-lbl">ตาราง DCA</span>
+    </button>
+    <div class="sb-sep"></div>
+    <button class="sb-tab" data-tab="stock" onclick="showTab('stock')">
+      <span class="sb-ic"><i class="fa-solid fa-magnifying-glass-chart"></i></span>
+      <span class="sb-lbl">วิเคราะห์หุ้น</span>
+    </button>
+    <button class="sb-tab" data-tab="global" onclick="showTab('global')">
+      <span class="sb-ic"><i class="fa-solid fa-globe"></i></span>
+      <span class="sb-lbl">ตลาดทั่วโลก</span>
+    </button>
   </div>
 </nav>
 <div class="wrap">
@@ -606,6 +652,39 @@ body{display:flex;min-height:100vh;overflow-x:hidden}
 
 </div><!-- /tab-panel stock -->
 
+</div><!-- /tab-panel stock -->
+
+<div id="tab-global" class="tab-panel">
+<div class="card full" style="padding:0;overflow:hidden">
+  <!-- Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:16px 18px;border-bottom:1px solid var(--border)">
+    <div style="display:flex;align-items:center;gap:12px">
+      <h3 style="font-size:.9rem;font-weight:600"><i class="fa-solid fa-globe" style="color:var(--gold);margin-right:6px"></i>ตลาดหุ้นทั่วโลก</h3>
+      <span id="gm-live" style="display:none;font-size:.62rem;font-family:var(--mono);background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.25);border-radius:6px;padding:2px 8px;color:#34d399;align-items:center;gap:5px"></span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <div style="position:relative">
+        <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.7rem"></i>
+        <input id="gm-search" type="text" placeholder="ค้นหา ticker..." oninput="gmFilter()" style="background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:6px 10px 6px 28px;color:var(--text);font-family:var(--fn);font-size:.75rem;outline:none;width:160px">
+      </div>
+      <button class="btn btn-blue" onclick="gmFetchAll(true)" style="font-size:.72rem;padding:5px 12px"><i class="fa-solid fa-rotate"></i> รีเฟรช</button>
+    </div>
+  </div>
+  <!-- Category tabs -->
+  <div style="display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 18px;overflow-x:auto">
+    <button class="gm-cat on" data-cat="all"    onclick="gmSetCat(this,'all')">ทั้งหมด</button>
+    <button class="gm-cat"    data-cat="index"  onclick="gmSetCat(this,'index')"><i class="fa-solid fa-earth-americas"></i> ดัชนี</button>
+    <button class="gm-cat"    data-cat="us"     onclick="gmSetCat(this,'us')"><i class="fa-solid fa-flag-usa"></i> US</button>
+    <button class="gm-cat"    data-cat="th"     onclick="gmSetCat(this,'th')"><i class="fa-solid fa-sun"></i> ไทย</button>
+    <button class="gm-cat"    data-cat="asia"   onclick="gmSetCat(this,'asia')"><i class="fa-solid fa-torii-gate"></i> เอเชีย</button>
+    <button class="gm-cat"    data-cat="crypto" onclick="gmSetCat(this,'crypto')"><i class="fa-brands fa-bitcoin"></i> Crypto</button>
+  </div>
+  <!-- Grid -->
+  <div id="gm-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1px;background:var(--border)"></div>
+  <div id="gm-empty" style="display:none;padding:60px;text-align:center;color:var(--muted);font-size:.85rem"><i class="fa-solid fa-circle-notch fa-spin" style="font-size:1.5rem;margin-bottom:12px;display:block"></i>กำลังโหลดข้อมูล...</div>
+</div>
+</div><!-- /tab-panel global -->
+
 <div class="ov" id="txMod" onclick="bgClose(event,'txMod')">
 <div class="modal">
   <div class="m-h"><h2 id="txTitle">+ เพิ่มรายการ</h2><button class="m-x" onclick="closeModal('txMod')">✕</button></div>
@@ -642,20 +721,35 @@ body{display:flex;min-height:100vh;overflow-x:hidden}
 <script>
 /* ─── SIDEBAR & TAB SYSTEM ─── */
 function showTab(id){
-  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.sb-tab').forEach(b=>b.classList.remove('active'));
-  const panel=document.getElementById('tab-'+id);
-  if(panel)panel.classList.add('active');
   const btn=document.querySelector(`.sb-tab[data-tab="${id}"]`);
   if(btn)btn.classList.add('active');
   localStorage.setItem('pTab_v1',id);
-  // Refresh charts that need visible canvas
+
+  if(id==='all'){
+    // Show all panels at once
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.add('active'));
+    setTimeout(()=>{
+      try{renderMainChart();}catch(e){}
+      try{renderDonut();}catch(e){}
+      try{renderGoal();}catch(e){}
+      try{renderPsChart();}catch(e){}
+      try{renderGoalGrid();}catch(e){}
+      const w=document.getElementById('txTableWrap');
+      if(w)w.style.maxHeight=w.scrollHeight+'px';
+    },60);
+    return;
+  }
+
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  const panel=document.getElementById('tab-'+id);
+  if(panel)panel.classList.add('active');
+
   setTimeout(()=>{
     if(id==='charts'){try{renderMainChart();}catch(e){}try{renderDonut();}catch(e){}}
     if(id==='goal'){try{renderGoal();}catch(e){}try{renderPsChart();}catch(e){}}
     if(id==='dca'){try{renderPsChart();}catch(e){}try{renderGoalGrid();}catch(e){}}
     if(id==='stock'&&selTicker){try{renderStockChart(selTicker,stockHistCache[selTicker]);}catch(e){}}
-    // Fix tx table height
     const w=document.getElementById('txTableWrap');
     if(w&&id==='history')w.style.maxHeight=w.scrollHeight+'px';
   },60);
@@ -1939,7 +2033,7 @@ if (_bgt && document.getElementById('bgDot')) document.getElementById('bgDot').s
 // Restore sidebar collapse state
 if(localStorage.getItem('pSb_v1')==='1') document.getElementById('sidebar').classList.add('collapsed');
 // Restore last active tab
-const _lastTab=localStorage.getItem('pTab_v1')||'overview';
+const _lastTab=localStorage.getItem('pTab_v1')||'all';
 showTab(_lastTab);
 
 renderAll();
@@ -1991,7 +2085,223 @@ function toggleBgPanel(e) {
   document.getElementById('bgThemePanel').classList.toggle('open');
 }
 
-document.addEventListener('click', e => {
+/* ═══════════════════════════════════════════
+   GLOBAL MARKETS
+═══════════════════════════════════════════ */
+const GM_STOCKS = [
+  // Indices
+  {t:'SPY',   n:'S&P 500 ETF',         cat:'index', ex:'NYSE',  cg:null},
+  {t:'QQQ',   n:'NASDAQ 100 ETF',      cat:'index', ex:'NYSE',  cg:null},
+  {t:'DIA',   n:'Dow Jones ETF',       cat:'index', ex:'NYSE',  cg:null},
+  {t:'EWJ',   n:'Japan (Nikkei) ETF',  cat:'index', ex:'NYSE',  cg:null},
+  {t:'EWH',   n:'Hong Kong ETF',       cat:'index', ex:'NYSE',  cg:null},
+  {t:'EWT',   n:'Taiwan ETF',          cat:'index', ex:'NYSE',  cg:null},
+  // US
+  {t:'AAPL',  n:'Apple Inc.',          cat:'us',    ex:'NASDAQ',cg:null},
+  {t:'MSFT',  n:'Microsoft',           cat:'us',    ex:'NASDAQ',cg:null},
+  {t:'NVDA',  n:'NVIDIA',              cat:'us',    ex:'NASDAQ',cg:null},
+  {t:'GOOGL', n:'Alphabet (Google)',   cat:'us',    ex:'NASDAQ',cg:null},
+  {t:'AMZN',  n:'Amazon',             cat:'us',    ex:'NASDAQ',cg:null},
+  {t:'META',  n:'Meta Platforms',      cat:'us',    ex:'NASDAQ',cg:null},
+  {t:'TSLA',  n:'Tesla',               cat:'us',    ex:'NASDAQ',cg:null},
+  {t:'NFLX',  n:'Netflix',             cat:'us',    ex:'NASDAQ',cg:null},
+  {t:'ASML',  n:'ASML Holding',        cat:'us',    ex:'NASDAQ',cg:null},
+  {t:'GLD',   n:'Gold ETF',            cat:'us',    ex:'NYSE',  cg:null},
+  {t:'SLV',   n:'Silver ETF',          cat:'us',    ex:'NYSE',  cg:null},
+  // Thai
+  {t:'PTT.BK',   n:'PTT',             cat:'th',    ex:'SET',   cg:null},
+  {t:'KBANK.BK', n:'Kasikornbank',    cat:'th',    ex:'SET',   cg:null},
+  {t:'AOT.BK',   n:'Airports of TH', cat:'th',    ex:'SET',   cg:null},
+  {t:'CPALL.BK', n:'CP ALL',         cat:'th',    ex:'SET',   cg:null},
+  {t:'GULF.BK',  n:'Gulf Energy',    cat:'th',    ex:'SET',   cg:null},
+  {t:'ADVANC.BK',n:'ADVANC',         cat:'th',    ex:'SET',   cg:null},
+  {t:'SCB.BK',   n:'SCB',            cat:'th',    ex:'SET',   cg:null},
+  {t:'BBL.BK',   n:'Bangkok Bank',   cat:'th',    ex:'SET',   cg:null},
+  // Asia
+  {t:'9988.HK',  n:'Alibaba',        cat:'asia',  ex:'HKEX',  cg:null},
+  {t:'0700.HK',  n:'Tencent',        cat:'asia',  ex:'HKEX',  cg:null},
+  {t:'005930.KS',n:'Samsung',        cat:'asia',  ex:'KRX',   cg:null},
+  {t:'TSM',      n:'Taiwan Semi.',   cat:'asia',  ex:'NYSE',  cg:null},
+  {t:'SONY',     n:'Sony Group',     cat:'asia',  ex:'NYSE',  cg:null},
+  {t:'TM',       n:'Toyota Motor',   cat:'asia',  ex:'NYSE',  cg:null},
+  // Crypto
+  {t:'BTC',   n:'Bitcoin',           cat:'crypto',ex:'Crypto',cg:'bitcoin'},
+  {t:'ETH',   n:'Ethereum',          cat:'crypto',ex:'Crypto',cg:'ethereum'},
+  {t:'BNB',   n:'BNB',               cat:'crypto',ex:'Crypto',cg:'binancecoin'},
+  {t:'SOL',   n:'Solana',            cat:'crypto',ex:'Crypto',cg:'solana'},
+  {t:'XRP',   n:'Ripple',            cat:'crypto',ex:'Crypto',cg:'ripple'},
+  {t:'ADA',   n:'Cardano',           cat:'crypto',ex:'Crypto',cg:'cardano'},
+  {t:'DOGE',  n:'Dogecoin',          cat:'crypto',ex:'Crypto',cg:'dogecoin'},
+];
+
+let gmData={}, gmCat='all', gmSearch='', gmTimer=null, gmCdTimer=null, gmSec=30;
+const GM_PROXY=['https://corsproxy.io/?','https://api.allorigins.win/raw?url='];
+
+async function gmFetchYF(tickers){
+  const syms=tickers.join('%2C');
+  const url=`https://query1.finance.yahoo.com/v8/finance/spark?symbols=${syms}&range=1d&interval=5m`;
+  for(const px of GM_PROXY){
+    try{
+      const fullUrl=px.includes('allorigins')?px+encodeURIComponent(url):px+encodeURIComponent(url);
+      const r=await fetch(fullUrl,{signal:AbortSignal.timeout(8000)});
+      const j=await r.json();
+      if(j.spark?.result) return j.spark.result;
+    }catch(e){}
+  }
+  // fallback: v8/finance/chart per ticker for quotes
+  return null;
+}
+
+async function gmFetchQuotes(tickers){
+  const syms=tickers.join(',');
+  const url=`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${syms}&fields=regularMarketPrice,regularMarketChangePercent,regularMarketPreviousClose,shortName`;
+  for(const px of GM_PROXY){
+    try{
+      const fullUrl=px.includes('allorigins')?px+encodeURIComponent(url):px+encodeURIComponent(url);
+      const r=await fetch(fullUrl,{signal:AbortSignal.timeout(8000)});
+      const j=await r.json();
+      if(j.quoteResponse?.result) return j.quoteResponse.result;
+    }catch(e){}
+  }
+  return [];
+}
+
+async function gmFetchCrypto(ids){
+  try{
+    const r=await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd&include_24hr_change=true&include_sparkline=false`,{signal:AbortSignal.timeout(8000)});
+    return await r.json();
+  }catch(e){return {};}
+}
+
+async function gmFetchAll(force=false){
+  if(!document.getElementById('tab-global').classList.contains('active')&&!force) return;
+  document.getElementById('gm-empty').style.display='block';
+  document.getElementById('gm-grid').style.display='none';
+
+  const yfTickers=GM_STOCKS.filter(s=>!s.cg).map(s=>s.t);
+  const cgIds=GM_STOCKS.filter(s=>s.cg).map(s=>s.cg);
+
+  // Fetch in parallel
+  const [quotes, cryptoJ] = await Promise.all([
+    gmFetchQuotes(yfTickers),
+    gmFetchCrypto(cgIds)
+  ]);
+
+  // Fetch sparklines separately
+  const sparkJ = await gmFetchYF(yfTickers).catch(()=>null);
+
+  // Map YF quotes
+  (quotes||[]).forEach(q=>{
+    const s=GM_STOCKS.find(x=>x.t===q.symbol);
+    if(s){
+      gmData[s.t]={price:q.regularMarketPrice,chg:q.regularMarketChangePercent,name:q.shortName||s.n,spark:null};
+    }
+  });
+
+  // Map sparklines
+  if(sparkJ){
+    sparkJ.forEach(item=>{
+      const sym=item?.symbol;
+      if(sym&&gmData[sym]){
+        gmData[sym].spark=item?.response?.[0]?.indicators?.quote?.[0]?.close||null;
+      }
+    });
+  }
+
+  // Map crypto
+  GM_STOCKS.filter(s=>s.cg).forEach(s=>{
+    const d=cryptoJ[s.cg];
+    if(d) gmData[s.t]={price:d.usd,chg:d.usd_24h_change,name:s.n,spark:null};
+  });
+
+  gmRender();
+  gmStartTimer();
+}
+
+function gmRender(){
+  const grid=document.getElementById('gm-grid');
+  const empty=document.getElementById('gm-empty');
+  const q=gmSearch.toLowerCase();
+  const filtered=GM_STOCKS.filter(s=>{
+    if(gmCat!=='all'&&s.cat!==gmCat) return false;
+    if(q&&!s.t.toLowerCase().includes(q)&&!s.n.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  if(!filtered.length){empty.innerHTML='<i class="fa-solid fa-circle-xmark" style="font-size:1.5rem;display:block;margin-bottom:8px"></i>ไม่พบข้อมูล';empty.style.display='block';grid.style.display='none';return;}
+  empty.style.display='none';grid.style.display='grid';
+  grid.innerHTML=filtered.map(s=>{
+    const d=gmData[s.t];
+    const price=d?.price;
+    const chg=d?.chg;
+    const chgCls=!chg?'flat':chg>=0?'up':'dn';
+    const chgTxt=chg!=null?(chg>=0?'+':'')+chg.toFixed(2)+'%':'—';
+    const priceStr=price!=null?(s.cat==='th'?'฿':'$')+price.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:price>=100?2:4}):'—';
+    const spark=d?.spark;
+    const sparkId='spark-'+s.t.replace(/[^a-z0-9]/gi,'_');
+    return `<div class="gm-card">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px">
+        <div>
+          <div class="gm-ticker">${s.t.replace('.BK','').replace('.HK','').replace('.KS','')}</div>
+          <div class="gm-name">${d?.name||s.n}</div>
+        </div>
+        <span class="gm-exch">${s.ex}</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+        <div class="gm-price">${priceStr}</div>
+        <span class="gm-chg ${chgCls}">${chgTxt}</span>
+      </div>
+      ${spark?`<div class="gm-spark"><canvas id="${sparkId}" height="36"></canvas></div>`:''}
+    </div>`;
+  }).join('');
+
+  // Draw sparklines
+  filtered.forEach(s=>{
+    const d=gmData[s.t];
+    if(!d?.spark) return;
+    const id='spark-'+s.t.replace(/[^a-z0-9]/gi,'_');
+    const canvas=document.getElementById(id);
+    if(!canvas) return;
+    const pts=d.spark.filter(v=>v!=null);
+    if(!pts.length) return;
+    const chg=d.chg||0;
+    const color=chg>=0?'#34d399':'#f87171';
+    try{
+      new Chart(canvas.getContext('2d'),{type:'line',data:{labels:pts.map((_,i)=>i),datasets:[{data:pts,borderColor:color,borderWidth:1.5,fill:true,backgroundColor:color+'18',tension:.3,pointRadius:0}]},options:{responsive:false,animation:false,plugins:{legend:{display:false},tooltip:{enabled:false}},scales:{x:{display:false},y:{display:false}}}});
+    }catch(e){}
+  });
+
+  // Update live badge
+  const badge=document.getElementById('gm-live');
+  badge.style.display='inline-flex';
+  badge.innerHTML=`<span style="width:6px;height:6px;border-radius:50%;background:#34d399;display:inline-block;animation:pulse 1s infinite"></span> LIVE · ${gmSec}s`;
+}
+
+function gmSetCat(btn,cat){
+  document.querySelectorAll('.gm-cat').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  gmCat=cat; gmRender();
+}
+function gmFilter(){gmSearch=document.getElementById('gm-search').value; gmRender();}
+
+function gmStartTimer(){
+  if(gmCdTimer) clearInterval(gmCdTimer);
+  gmSec=30;
+  gmCdTimer=setInterval(()=>{
+    gmSec--;
+    const badge=document.getElementById('gm-live');
+    if(badge&&badge.style.display!=='none') badge.innerHTML=`<span style="width:6px;height:6px;border-radius:50%;background:#34d399;display:inline-block;animation:pulse 1s infinite"></span> LIVE · ${gmSec}s`;
+    if(gmSec<=0){gmSec=30; gmFetchAll();}
+  },1000);
+}
+
+// Auto-load when tab is opened
+const _origShowTab=showTab;
+showTab=function(id){
+  _origShowTab(id);
+  if(id==='global'&&Object.keys(gmData).length===0) gmFetchAll();
+};
+
+
   const p = document.getElementById('bgThemePanel');
   const b = document.getElementById('bgThemeBtn');
   if (p && !p.contains(e.target) && b && !b.contains(e.target))
