@@ -689,57 +689,19 @@ const DEF_P={
   'TU':17,'HMPRO':22,'BDMS':28,'BH':210,'CPN':62,'CRC':40
 };
 
-// Seed Data Removed DAOL-GOLD.CST, AG, MTS-GOLD.CST
-const SEED=[
-  {id:1, date:'2026-04-23',type:'Buy', ticker:'BTC-USD',       price:2529214, currency:'THB',shares:0.002291,  commission:0,   note:''},
-  {id:2, date:'2026-04-23',type:'Buy', ticker:'BTC-USD',       price:2530336, currency:'THB',shares:0.014990,  commission:0,   note:''},
-  {id:3, date:'2026-04-23',type:'Buy', ticker:'BTC-USD',       price:2529491, currency:'THB',shares:0.006435,  commission:0,   note:''},
-  {id:4, date:'2026-04-14',type:'Sell',ticker:'ASML',          price:1517.23, currency:'USD',shares:0.4445,    commission:0,   note:''},
-  {id:5, date:'2026-04-14',type:'Buy', ticker:'SLV',           price:71.5168, currency:'USD',shares:8.736235,  commission:0,   note:''},
-  {id:6, date:'2026-04-14',type:'Sell',ticker:'AMZN',          price:246.41,  currency:'USD',shares:1.34,      commission:0,   note:''},
-  {id:7, date:'2026-04-09',type:'Buy', ticker:'MSFT',          price:369.672, currency:'USD',shares:0.084047,  commission:0,   note:'DCA'},
-  {id:8, date:'2026-04-08',type:'Buy', ticker:'MSFT',          price:378.334, currency:'USD',shares:0.101075,  commission:0,   note:'DCA'},
-  {id:9, date:'2026-04-07',type:'Buy', ticker:'MSFT',          price:369.576, currency:'USD',shares:0.165243,  commission:0,   note:'DCA'},
-  {id:10,date:'2026-04-07',type:'Buy', ticker:'SLV',           price:64.05,   currency:'USD',shares:1.590008,  commission:0,   note:''},
-  {id:11,date:'2026-04-01',type:'Buy', ticker:'GOOGL',         price:295.9,   currency:'USD',shares:1.04,      commission:0,   note:'DCA'},
-  {id:12,date:'2026-03-02',type:'Buy', ticker:'SLV',           price:81.4868, currency:'USD',shares:7.772311,  commission:0,   note:''},
-  {id:13,date:'2026-02-27',type:'Sell',ticker:'SLV',           price:83.7251, currency:'USD',shares:6.861322,  commission:0,   note:''},
-  {id:14,date:'2026-02-27',type:'Sell',ticker:'SILJ',          price:39.72,   currency:'USD',shares:16.45,     commission:0,   note:''},
-  {id:15,date:'2026-02-27',type:'Buy', ticker:'GOOGL',         price:307.97,  currency:'USD',shares:2.09,      commission:0,   note:'DCA'},
-  {id:16,date:'2026-02-27',type:'Sell',ticker:'PAAS',          price:67.75,   currency:'USD',shares:4.06,      commission:0,   note:''},
-  {id:18,date:'2026-02-27',type:'Buy', ticker:'ASML',          price:1448.98, currency:'USD',shares:0.4445,    commission:0,   note:'DCA'},
-  {id:19,date:'2026-02-10',type:'Buy', ticker:'MSTR',          price:135.608, currency:'USD',shares:0.234794,  commission:0,   note:''},
-  {id:21,date:'2026-01-31',type:'Buy', ticker:'MSFT',          price:430.99,  currency:'USD',shares:0.340797,  commission:0,   note:'DCA'},
-  {id:22,date:'2026-01-29',type:'Buy', ticker:'MSFT',          price:434.338, currency:'USD',shares:0.734704,  commission:0,   note:'DCA'},
-  {id:23,date:'2026-01-29',type:'Buy', ticker:'MSFT',          price:433.544, currency:'USD',shares:0.735819,  commission:0,   note:'DCA'},
-  {id:24,date:'2026-01-29',type:'Buy', ticker:'MSFT',          price:432.586, currency:'USD',shares:0.737194,  commission:0,   note:'DCA'},
-  {id:25,date:'2026-01-29',type:'Buy', ticker:'AMZN',          price:236.99,  currency:'USD',shares:1.34,      commission:0,   note:'DCA'},
-  {id:27,date:'2026-01-26',type:'Sell',ticker:'NEM',           price:128.57,  currency:'USD',shares:2.14,      commission:0.43,note:''},
-  {id:28,date:'2026-01-26',type:'Sell',ticker:'AMZN',          price:238.73,  currency:'USD',shares:1.34,      commission:0.50,note:''},
-  {id:29,date:'2026-01-26',type:'Buy', ticker:'SILJ',          price:40.72,   currency:'USD',shares:7.82,      commission:0.51,note:''},
-  {id:30,date:'2026-01-26',type:'Buy', ticker:'PAAS',          price:67.75,   currency:'USD',shares:4.06,      commission:0.44,note:''},
-  {id:32,date:'2026-01-23',type:'Buy', ticker:'SILJ',          price:38.16,   currency:'USD',shares:8.63,      commission:0,   note:''},
-  {id:33,date:'2026-01-23',type:'Buy', ticker:'NEM',           price:123.7,   currency:'USD',shares:2.14,      commission:0,   note:''},
-  {id:34,date:'2026-01-22',type:'Sell',ticker:'NVDA',          price:184.12,  currency:'USD',shares:1.75,      commission:0,   note:''},
-  {id:35,date:'2026-01-19',type:'Sell',ticker:'BTC-USD',       price:2892300, currency:'THB',shares:0.001500,  commission:0.25,note:''},
-  {id:36,date:'2026-01-19',type:'Sell',ticker:'BTC-USD',       price:2892300, currency:'THB',shares:0.000182,  commission:0.25,note:''},
-  {id:37,date:'2026-01-19',type:'Sell',ticker:'BTC-USD',       price:2892300, currency:'THB',shares:0.001400,  commission:0.25,note:''},
-  {id:38,date:'2026-01-19',type:'Sell',ticker:'BTC-USD',       price:2892300, currency:'THB',shares:0.000037,  commission:0.25,note:''},
-  {id:39,date:'2026-01-19',type:'Sell',ticker:'BTC-USD',       price:2892300, currency:'THB',shares:0.000195,  commission:0.25,note:''},
-  {id:40,date:'2026-01-19',type:'Sell',ticker:'BTC-USD',       price:2892300, currency:'THB',shares:0.000372,  commission:0.25,note:''},
-  {id:41,date:'2026-01-19',type:'Sell',ticker:'BTC-USD',       price:2892300, currency:'THB',shares:0.000171,  commission:0.25,note:''},
-  {id:42,date:'2026-01-16',type:'Buy', ticker:'SLV',           price:79.825,  currency:'USD',shares:6.861322,  commission:0,   note:''},
-  {id:43,date:'2026-01-15',type:'Buy', ticker:'MSFT',          price:458.466, currency:'USD',shares:0.694686,  commission:0,   note:'DCA'},
-  {id:44,date:'2026-01-15',type:'Buy', ticker:'AMZN',          price:236.87,  currency:'USD',shares:1.34,      commission:0,   note:'DCA'},
-  {id:45,date:'2026-01-14',type:'Buy', ticker:'NVDA',          price:181.89,  currency:'USD',shares:1.75,      commission:0,   note:''},
-  {id:46,date:'2026-01-13',type:'Buy', ticker:'BTC-USD',       price:3006996, currency:'THB',shares:0.002100,  commission:0.25,note:'BTC DCA'},
-  {id:47,date:'2026-01-12',type:'Buy', ticker:'BTC-USD',       price:2849781, currency:'THB',shares:0.001100,  commission:0.25,note:'BTC DCA'},
-  {id:50,date:'2026-01-07',type:'Buy', ticker:'GOOGL',         price:320.3,   currency:'USD',shares:0.9937,    commission:0,   note:'DCA'},
-];
+// Empty seed — เริ่มต้นใหม่ไม่มีข้อมูล
+const SEED=[];
 
 /* ═══════════════════════════════════════════
    STATE
 ═══════════════════════════════════════════ */
+// v6: ล้างข้อมูล seed เก่าออก เริ่มต้นใหม่
+if(!localStorage.getItem('pCLEARED_v6')){
+  localStorage.removeItem('pTXv5');
+  localStorage.removeItem('pPXv5');
+  localStorage.removeItem('pACv5');
+  localStorage.setItem('pCLEARED_v6','1');
+}
 let txs     = JSON.parse(localStorage.getItem('pTXv5') ||'null')     || SEED;
 let prices  = JSON.parse(localStorage.getItem('pPXv5') ||'null')     || {...DEF_P};
 let actuals = JSON.parse(localStorage.getItem('pACv5') ||'{}');
@@ -1778,29 +1740,6 @@ function exportCSV(){
   a.download='portfolio.csv';a.click();
 }
 
-/* ═══════════════════════════════════════════
-   INIT
-═══════════════════════════════════════════ */
-initThemes();
-document.getElementById('rateI').value=rate;
-document.getElementById('aPx').addEventListener('input',updatePrev);
-document.getElementById('aQty').addEventListener('input',updatePrev);
-
-// Set initial collapsible height after render
-// Init BG theme
-  buildBgThemePicker();
-  document.body.setAttribute('data-bg-theme', curBgTheme);
-  const _bgt = BG_THEMES.find(x => x.id === curBgTheme);
-  if (_bgt && document.getElementById('bgDot')) document.getElementById('bgDot').style.background = _bgt.hex;
-  renderAll();
-setTimeout(()=>{
-  const w=document.getElementById('txTableWrap');
-  if(w)w.style.maxHeight=w.scrollHeight+'px';
-},200);
-
-// Auto-fetch prices on load
-setTimeout(fetchAllPrices,1200);
-
 /* ─── BACKGROUND THEME SYSTEM ─── */
 const BG_THEMES = [
   {id:'dark-black',    label:'สีดำ',       hex:'#000000'},
@@ -1823,6 +1762,27 @@ const BG_THEMES = [
 ];
 const LIGHT_BG_IDS = ['pure-white','warm-white','pink','lavender','soft-purple','mint','bright-mint','yellow','bright-yellow','cream','light-blue','orange'];
 let curBgTheme = localStorage.getItem('gtBgTheme') || 'dark-black';
+
+/* ═══════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════ */
+initThemes();
+document.getElementById('rateI').value=rate;
+document.getElementById('aPx').addEventListener('input',updatePrev);
+document.getElementById('aQty').addEventListener('input',updatePrev);
+
+buildBgThemePicker();
+document.body.setAttribute('data-bg-theme', curBgTheme);
+const _bgt = BG_THEMES.find(x => x.id === curBgTheme);
+if (_bgt && document.getElementById('bgDot')) document.getElementById('bgDot').style.background = _bgt.hex;
+renderAll();
+setTimeout(()=>{
+  const w=document.getElementById('txTableWrap');
+  if(w)w.style.maxHeight=w.scrollHeight+'px';
+},200);
+
+// Auto-fetch prices on load
+setTimeout(fetchAllPrices,1200);
 
 function buildBgThemePicker() {
   const grid = document.getElementById('btpGrid');
