@@ -492,11 +492,11 @@ body{display:flex;min-height:100vh;overflow-x:hidden}
       </div>
       <div class="gf">
         <label>เริ่มปี (ค.ศ.)</label>
-        <input type="number" id="gSY" value="2026" onchange="renderGoal()" style="background:var(--s2); border:1px solid var(--border); border-radius:5px; padding:4px 6px; color:var(--text); font-family:var(--mono); font-size:.8rem;">
+        <input type="number" id="gSY" value="2026" onchange="saveGoal();renderGoal()" style="background:var(--s2); border:1px solid var(--border); border-radius:5px; padding:4px 6px; color:var(--text); font-family:var(--mono); font-size:.8rem;">
       </div>
       <div class="gf">
         <label>เริ่มเดือน (1-12)</label>
-        <input type="number" id="gSM" value="1" min="1" max="12" onchange="renderGoal()" style="background:var(--s2); border:1px solid var(--border); border-radius:5px; padding:4px 6px; color:var(--text); font-family:var(--mono); font-size:.8rem;">
+        <input type="number" id="gSM" value="1" min="1" max="12" onchange="saveGoal();renderGoal()" style="background:var(--s2); border:1px solid var(--border); border-radius:5px; padding:4px 6px; color:var(--text); font-family:var(--mono); font-size:.8rem;">
       </div>
     </div>
     <div class="gkpi" id="gKpi"></div>
@@ -1426,7 +1426,19 @@ function getSP(d){
 
 function syncG(id, val) {
   document.getElementById(id).value = val;
+  saveGoal();
   renderGoal();
+}
+
+function saveGoal(){
+  localStorage.setItem('pGOALv5', JSON.stringify({
+    gI:  document.getElementById('gI').value,
+    gM:  document.getElementById('gM').value,
+    gR:  document.getElementById('gR').value,
+    gYr: document.getElementById('gYr').value,
+    gSY: document.getElementById('gSY').value,
+    gSM: document.getElementById('gSM').value,
+  }));
 }
 
 /* ═══════════════════════════════════════════
@@ -2555,6 +2567,17 @@ document.getElementById('rateI').value=rate;
 // Restore ยอดเงินสดจาก localStorage
 const _savedCash = localStorage.getItem('pCASHv5');
 if(_savedCash !== null) document.getElementById('cashI').value = _savedCash;
+// Restore Goal Tracker settings
+const _savedGoal = JSON.parse(localStorage.getItem('pGOALv5')||'null');
+if(_savedGoal){
+  const set=(id,v)=>{const el=document.getElementById(id);if(el&&v!==undefined)el.value=v;};
+  set('gI',_savedGoal.gI); set('gI_s',_savedGoal.gI);
+  set('gM',_savedGoal.gM); set('gM_s',_savedGoal.gM);
+  set('gR',_savedGoal.gR); set('gR_s',_savedGoal.gR);
+  set('gYr',_savedGoal.gYr); set('gYr_s',_savedGoal.gYr);
+  set('gSY',_savedGoal.gSY);
+  set('gSM',_savedGoal.gSM);
+}
 document.getElementById('aPx').addEventListener('input',updatePrev);
 document.getElementById('aQty').addEventListener('input',updatePrev);
 
