@@ -11,6 +11,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{
   --bg:#07090d;--s1:#0d1018;--s2:#131820;--s3:#192030;
@@ -290,6 +291,7 @@ body[data-bg-theme="bright-yellow"]{--bg:#ffff4a;--s1:#f5f520;--s2:#ffffb8;--s3:
 body[data-bg-theme="cream"]{--bg:#fdfbd4;--s1:#f8f6c8;--s2:#fffef0;--s3:#f0edba;--card-bg:#ffffff;--card-shadow:0 6px 28px rgba(180,170,20,.15);--card-border:rgba(200,190,40,.18);--text:#2a2800;--text2:#504e10;--muted:#807820;--border:rgba(0,0,0,.08);--b2:rgba(0,0,0,.05)}
 body[data-bg-theme="orange"]{--bg:#ffc563;--s1:#ffb844;--s2:#ffe0a8;--s3:#ffa824;--card-bg:#ffffff;--card-shadow:0 6px 28px rgba(220,140,0,.25);--card-border:rgba(230,150,0,.2);--text:#2a1400;--text2:#5a3a10;--muted:#8a6a40;--border:rgba(0,0,0,.08);--b2:rgba(0,0,0,.05)}
 body[data-bg-theme="light-blue"]{--bg:#d6ffff;--s1:#c4fbff;--s2:#eaffff;--s3:#b0f8ff;--card-bg:#ffffff;--card-shadow:0 6px 28px rgba(0,180,200,.2);--card-border:rgba(0,200,220,.2);--text:#002a38;--text2:#1a6070;--muted:#4a9098;--border:rgba(0,0,0,.08);--b2:rgba(0,0,0,.05)}
+body[data-bg-theme="white-black"]{--bg:#ffffff;--s1:#f5f5f5;--s2:#eeeeee;--s3:#e3e3e3;--card-bg:#ffffff;--card-shadow:0 4px 20px rgba(0,0,0,.1);--card-border:rgba(0,0,0,.1);--text:#000000;--text2:#333333;--muted:#888888;--border:rgba(0,0,0,.13);--b2:rgba(0,0,0,.06)}
 /* Theme picker popup */
 .bg-theme-wrap{position:relative;display:inline-block}
 .bg-theme-btn{display:flex;align-items:center;gap:6px;background:var(--card-bg,#111118);border:1px solid var(--card-border,rgba(255,255,255,.09));border-radius:7px;padding:5px 12px;cursor:pointer;color:var(--text2,#8896aa);font-size:.78rem;font-weight:600;font-family:inherit;transition:all .2s}
@@ -415,6 +417,10 @@ body{display:flex;min-height:100vh;overflow-x:hidden}
     <span class="price-status" id="pxStatus">—</span>
     <button class="btn btn-ghost" onclick="exportCSV()">⬇ CSV</button>
     <button class="btn btn-gold"  onclick="openAdd()">+ เพิ่มรายการ</button>
+    <label class="btn btn-ghost" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px" title="นำเข้าไฟล์ Excel / CSV">
+      📥 นำเข้า Excel
+      <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcel(event)">
+    </label>
   </div>
 </header>
 
@@ -685,7 +691,214 @@ body{display:flex;min-height:100vh;overflow-x:hidden}
 </div>
 </div><!-- /tab-panel global -->
 
-<div class="ov" id="txMod" onclick="bgClose(event,'txMod')">
+<div class="ov" id="importMod" onclick="bgClose(event,'importMod')">
+<div class="modal" style="width:min(760px,96%);max-height:90vh">
+  <div class="m-h">
+    <h2>📥 นำเข้า Transaction จาก Excel</h2>
+    <button class="m-x" onclick="closeModal('importMod')">✕</button>
+  </div>
+  <div style="background:rgba(96,165,250,.07);border:1px solid rgba(96,165,250,.2);border-radius:8px;padding:10px 14px;font-size:.76rem;color:var(--blue);margin-bottom:12px;line-height:1.6">
+    <strong>รูปแบบคอลัมน์ที่รองรับ:</strong><br>
+    <span style="font-family:var(--mono);font-size:.7rem">ประเภท / Type &nbsp;·&nbsp; Ticker / Symbol &nbsp;·&nbsp; วันที่ / Date &nbsp;·&nbsp; ราคา / Price &nbsp;·&nbsp; จำนวน / Shares / Qty &nbsp;·&nbsp; สกุล / Currency &nbsp;·&nbsp; ค่าคอม / Commission &nbsp;·&nbsp; หมายเหตุ / Note</span><br>
+    <button class="btn btn-ghost" onclick="downloadTemplate()" style="margin-top:7px;font-size:.68rem;padding:4px 10px">⬇ ดาวน์โหลด Template Excel</button>
+  </div>
+  <div id="importPreview" style="min-height:80px"></div>
+  <div class="m-acts" style="margin-top:14px">
+    <button class="btn btn-ghost" onclick="closeModal('importMod')">ยกเลิก</button>
+    <button class="btn btn-gold" id="importConfirmBtn" onclick="confirmImport()" disabled>✅ นำเข้าทั้งหมด</button>
+  </div>
+</div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════
+   EXCEL IMPORT
+═══════════════════════════════════════════ */
+let importData = [];
+
+function importExcel(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  event.target.value = '';
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:'array', cellDates:true});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:false, dateNF:'YYYY-MM-DD'});
+
+      if (!rows || rows.length < 2) { alert('ไม่พบข้อมูลในไฟล์'); return; }
+
+      const rawHeaders = rows[0].map(h => String(h||'').trim());
+      const headers = rawHeaders.map(h => h.toLowerCase());
+
+      function findCol(names) {
+        for (const n of names) {
+          const idx = headers.findIndex(h => h.includes(n.toLowerCase()));
+          if (idx >= 0) return idx;
+        }
+        return -1;
+      }
+
+      const colType   = findCol(['ประเภท','type','action','buy/sell','side']);
+      const colTicker = findCol(['ticker','symbol','หุ้น','สัญลักษณ์','ชื่อหุ้น']);
+      const colDate   = findCol(['วันที่','date','trade date','tradedate']);
+      const colPrice  = findCol(['ราคา','price','ราคา/หน่วย','unit price']);
+      const colShares = findCol(['จำนวน','shares','qty','quantity','volume']);
+      const colCur    = findCol(['สกุล','currency','cur','สกุลเงิน']);
+      const colCom    = findCol(['ค่าคอม','commission','fee','ค่าธรรมเนียม']);
+      const colNote   = findCol(['หมายเหตุ','note','notes','remark','comment']);
+
+      importData = [];
+      const errors = [];
+
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.every(c => !String(c||'').trim())) continue;
+
+        const get = (col) => col >= 0 ? String(row[col]||'').trim() : '';
+
+        const rawType   = get(colType);
+        const ticker    = get(colTicker).toUpperCase().replace(/\s/g,'');
+        let   date      = get(colDate);
+        const priceStr  = get(colPrice).replace(/,/g,'');
+        const sharesStr = get(colShares).replace(/,/g,'');
+        const rawCur    = get(colCur).toUpperCase();
+        const commission= parseFloat(get(colCom).replace(/,/g,'')) || 0;
+        const note      = get(colNote);
+
+        // Normalize type: Sell / Buy
+        const typeN = /sell|ขาย|s\b/i.test(rawType) ? 'Sell' : 'Buy';
+
+        // Normalize date → YYYY-MM-DD
+        if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+          // Handle Excel serial date numbers
+          const serial = parseFloat(date);
+          if (!isNaN(serial) && serial > 1000) {
+            const excelEpoch = new Date(1899,11,30);
+            const d = new Date(excelEpoch.getTime() + serial * 86400000);
+            date = d.toISOString().slice(0,10);
+          } else {
+            const d = new Date(date);
+            if (!isNaN(d)) date = d.toISOString().slice(0,10);
+          }
+        }
+
+        const price  = parseFloat(priceStr);
+        const shares = parseFloat(sharesStr);
+
+        if (!ticker) { errors.push(`แถว ${i+1}: ไม่พบ Ticker`); continue; }
+        if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) { errors.push(`แถว ${i+1} (${ticker}): วันที่ไม่ถูกต้อง "${get(colDate)}"`); continue; }
+        if (isNaN(price) || price <= 0) { errors.push(`แถว ${i+1} (${ticker}): ราคาไม่ถูกต้อง "${priceStr}"`); continue; }
+        if (isNaN(shares) || shares <= 0) { errors.push(`แถว ${i+1} (${ticker}): จำนวนไม่ถูกต้อง "${sharesStr}"`); continue; }
+
+        const currency = rawCur === 'USD' ? 'USD' : 'THB';
+
+        importData.push({
+          id: Date.now() + Math.random(),
+          type: typeN, ticker, date, price, shares, currency, commission, note
+        });
+      }
+
+      showImportPreview(errors);
+      openModal('importMod');
+    } catch(err) {
+      alert('อ่านไฟล์ไม่ได้: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function showImportPreview(errors) {
+  const el  = document.getElementById('importPreview');
+  const btn = document.getElementById('importConfirmBtn');
+
+  if (!importData.length) {
+    btn.disabled = true;
+    el.innerHTML = `<div style="color:var(--red);background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:8px;padding:14px;font-size:.78rem">
+      ❌ ไม่พบข้อมูลที่สามารถนำเข้าได้<br><br>
+      ${errors.slice(0,8).map(e=>`<div style="margin-top:4px;opacity:.8">• ${e}</div>`).join('')}
+    </div>`;
+    return;
+  }
+
+  btn.disabled = false;
+  btn.textContent = `✅ นำเข้า ${importData.length} รายการ`;
+
+  const preview = importData.slice(0,12);
+  const errHtml = errors.length
+    ? `<div style="background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.15);border-radius:6px;padding:8px 12px;font-size:.7rem;color:var(--red);margin-bottom:10px">
+        ⚠ ข้าม ${errors.length} แถว (ข้อมูลไม่ครบ):<br>
+        ${errors.slice(0,4).map(e=>`<div style="margin-top:2px;opacity:.85">${e}</div>`).join('')}
+        ${errors.length>4?`<div style="margin-top:2px;opacity:.6">...และอีก ${errors.length-4} แถว</div>`:''}
+      </div>` : '';
+
+  el.innerHTML = `
+    <div style="color:var(--green);font-size:.8rem;font-weight:600;margin-bottom:8px">
+      ✅ พบ ${importData.length} รายการพร้อมนำเข้า
+    </div>
+    ${errHtml}
+    <div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px">
+      <table style="width:100%;border-collapse:collapse;font-size:.72rem">
+        <thead>
+          <tr style="background:var(--s2)">
+            ${['Type','Ticker','วันที่','ราคา','จำนวน','Currency','คอม','Note'].map(h=>
+              `<th style="padding:7px 10px;text-align:left;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap">${h}</th>`
+            ).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${preview.map((tx,idx)=>`
+            <tr style="border-top:1px solid var(--b2);${idx%2===1?'background:rgba(255,255,255,.01)':''}">
+              <td style="padding:7px 10px"><span class="${tx.type==='Buy'?'type-b':'type-s'}">${tx.type}</span></td>
+              <td style="padding:7px 10px;font-weight:700;color:var(--gold)">${tx.ticker}</td>
+              <td style="padding:7px 10px;font-family:var(--mono);color:var(--text2)">${tx.date}</td>
+              <td style="padding:7px 10px;font-family:var(--mono)">${tx.price.toLocaleString('en-US',{maximumFractionDigits:4})}</td>
+              <td style="padding:7px 10px;font-family:var(--mono)">${tx.shares.toLocaleString('en-US',{maximumFractionDigits:6})}</td>
+              <td style="padding:7px 10px;color:var(--text2)">${tx.currency}</td>
+              <td style="padding:7px 10px;font-family:var(--mono);color:var(--muted)">${tx.commission||0}</td>
+              <td style="padding:7px 10px;color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${tx.note||'—'}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    ${importData.length>12?`<div style="font-size:.7rem;color:var(--muted);text-align:center;margin-top:6px">... แสดง 12 จาก ${importData.length} รายการ</div>`:''}
+    <div style="margin-top:10px;padding:8px 12px;background:var(--s2);border-radius:6px;font-size:.72rem;color:var(--text2)">
+      💡 รายการที่นำเข้าจะ<strong>เพิ่มเข้าพอร์ต</strong>ที่มีอยู่ ไม่ได้แทนที่ข้อมูลเดิม
+    </div>`;
+}
+
+function confirmImport() {
+  if (!importData.length) return;
+  importData.forEach(tx => {
+    if (!prices[tx.ticker]) prices[tx.ticker] = 0;
+    txs.push(tx);
+  });
+  const count = importData.length;
+  importData = [];
+  closeModal('importMod');
+  renderAll();
+  setTimeout(()=>alert(`✅ นำเข้าสำเร็จ ${count} รายการ`), 100);
+}
+
+function downloadTemplate() {
+  if (typeof XLSX === 'undefined') { alert('ไม่สามารถสร้าง Template ได้'); return; }
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['ประเภท','Ticker','วันที่','ราคา','จำนวน','สกุล','ค่าคอม','หมายเหตุ'],
+    ['Buy','AAPL','2025-01-15','185.50','10','USD','0','DCA รอบ 1'],
+    ['Buy','BTC-USD','2025-02-01','95000','0.001','USD','0','BTC DCA'],
+    ['Buy','KBANK','2025-03-01','160','100','THB','10','หุ้นไทย'],
+    ['Sell','AAPL','2025-06-01','210.00','5','USD','0','ขายบางส่วน'],
+  ]);
+  const colWidths = [12,12,14,12,10,10,10,20];
+  ws['!cols'] = colWidths.map(w=>({wch:w}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Transactions');
+  XLSX.writeFile(wb, 'portfolio_template.xlsx');
+}
+</script>
 <div class="modal">
   <div class="m-h"><h2 id="txTitle">+ เพิ่มรายการ</h2><button class="m-x" onclick="closeModal('txMod')">✕</button></div>
   <div class="fg2">
@@ -2014,8 +2227,9 @@ const BG_THEMES = [
   {id:'cream',         label:'ครีม',       hex:'#fdfbd4'},
   {id:'orange',        label:'ส้ม',        hex:'#ffc563'},
   {id:'light-blue',    label:'ฟ้าอ่อน',   hex:'#d6ffff'},
+  {id:'white-black',   label:'ขาว+ดำ',    hex:'#ffffff'},
 ];
-const LIGHT_BG_IDS = ['pure-white','warm-white','pink','lavender','soft-purple','mint','bright-mint','yellow','bright-yellow','cream','light-blue','orange'];
+const LIGHT_BG_IDS = ['pure-white','warm-white','pink','lavender','soft-purple','mint','bright-mint','yellow','bright-yellow','cream','light-blue','orange','white-black'];
 let curBgTheme = localStorage.getItem('gtBgTheme') || 'dark-black';
 
 /* ═══════════════════════════════════════════
