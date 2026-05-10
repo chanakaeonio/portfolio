@@ -815,30 +815,18 @@ function importExcel(event) {
         if (isNaN(price) || price <= 0) { errors.push(`แถว ${i+1} (${ticker}): ราคาไม่ถูกต้อง "${priceStr}"`); continue; }
         if (isNaN(shares) || shares <= 0) { errors.push(`แถว ${i+1} (${ticker}): จำนวนไม่ถูกต้อง "${sharesStr}"`); continue; }
 
-        // Smart currency: known tickers → force their standard currency
-        // Unknown tickers → use what's in the file, default THB
+        // Currency priority:
+        // 1. ถ้า Excel ระบุ USD/THB ชัดเจน → ใช้ตามนั้น (เชื่อ Excel เป็นหลัก)
+        // 2. ถ้าว่าง → ใช้ TICKER_CUR ถ้ารู้จัก หรือ default THB
         let currency;
-        if (TICKER_CUR[ticker]) {
-          currency = TICKER_CUR[ticker]; // e.g. BTC-USD→USD, PTT→THB
-        } else if (rawCur === 'USD') {
-          // Unknown ticker + USD: if price > 500,000 it's probably THB, warn
-          currency = 'USD';
-          if (price > 500000) {
-            errors.push(`แถว ${i+1} (${ticker}): ราคา ${price.toLocaleString()} สูงมากสำหรับ USD — อาจต้องเปลี่ยนเป็น THB`);
-          }
-        } else {
-          currency = 'THB'; // default safe
-        }
-
-        // Final sanity: if totTHB > 10M per unit, flag it
-        const totTHB = (currency==='USD' ? price*rate : price) * shares;
-        if (totTHB > 10000000) {
-          errors.push(`⚠️ แถว ${i+1} (${ticker}): มูลค่ารวม ฿${Math.round(totTHB/1e6)}M สูงผิดปกติ — ตรวจสอบ ราคา/สกุล`);
-        }
+        if (rawCur === 'USD') currency = 'USD';
+        else if (rawCur === 'THB') currency = 'THB';
+        else currency = TICKER_CUR[ticker] || 'THB';
 
         importData.push({
           id: Date.now() + Math.random(),
-          type: typeN, ticker, date, price, shares, currency, commission, note
+          type: typeN, ticker, date, price, shares, currency, commission, note,
+          rowNum: i+1
         });
       }
 
@@ -849,6 +837,16 @@ function importExcel(event) {
     }
   };
   reader.readAsArrayBuffer(file);
+}
+
+function calcImportTHB(tx) {
+  return (tx.currency === 'USD' ? tx.price * rate : tx.price) * tx.shares;
+}
+
+function toggleImportCur(idx) {
+  if (!importData[idx]) return;
+  importData[idx].currency = importData[idx].currency === 'USD' ? 'THB' : 'USD';
+  showImportPreview([]);
 }
 
 function showImportPreview(errors) {
@@ -865,48 +863,80 @@ function showImportPreview(errors) {
   }
 
   btn.disabled = false;
-  btn.textContent = `✅ นำเข้า ${importData.length} รายการ`;
 
-  const preview = importData.slice(0,12);
+  // Calculate totals and find suspicious rows
+  const suspectIdx = [];
+  let grandTHB = 0;
+  importData.forEach((tx, idx) => {
+    const thb = calcImportTHB(tx);
+    grandTHB += thb;
+    if (thb > 5000000) suspectIdx.push(idx); // > 5M THB เตือน
+  });
+
   const errHtml = errors.length
     ? `<div style="background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.15);border-radius:6px;padding:8px 12px;font-size:.7rem;color:var(--red);margin-bottom:10px">
-        ⚠ ข้าม ${errors.length} แถว (ข้อมูลไม่ครบ):<br>
+        ⚠ ข้าม ${errors.length} แถว:<br>
         ${errors.slice(0,4).map(e=>`<div style="margin-top:2px;opacity:.85">${e}</div>`).join('')}
         ${errors.length>4?`<div style="margin-top:2px;opacity:.6">...และอีก ${errors.length-4} แถว</div>`:''}
       </div>` : '';
 
+  const suspectHtml = suspectIdx.length
+    ? `<div style="background:rgba(248,183,0,.07);border:1px solid rgba(248,183,0,.25);border-radius:6px;padding:8px 12px;font-size:.72rem;color:#f5c842;margin-bottom:10px">
+        ⚠️ พบ ${suspectIdx.length} แถวที่มูลค่า THB สูงผิดปกติ (เกิน ฿5M) — ตรวจสอบคอลัมน์ <strong>Currency</strong> และกดปุ่มเพื่อเปลี่ยน
+      </div>` : '';
+
+  const rows = importData.map((tx, idx) => {
+    const thb = calcImportTHB(tx);
+    const isBig = thb > 5000000;
+    const curBtn = `<button onclick="toggleImportCur(${idx})"
+      style="background:${tx.currency==='USD'?'rgba(96,165,250,.15)':'rgba(52,211,153,.12)'};
+             border:1px solid ${tx.currency==='USD'?'rgba(96,165,250,.35)':'rgba(52,211,153,.3)'};
+             color:${tx.currency==='USD'?'var(--blue)':'var(--green)'};
+             border-radius:4px;padding:2px 8px;cursor:pointer;font-size:.68rem;font-weight:700;font-family:var(--mono)">
+      ${tx.currency}
+    </button>`;
+    const thbFmt = thb >= 1e6
+      ? `฿${(thb/1e6).toFixed(2)}M`
+      : `฿${Math.round(thb).toLocaleString('th-TH')}`;
+    return `<tr style="border-top:1px solid var(--b2);${isBig?'background:rgba(248,113,113,.06)':''}">
+      <td style="padding:6px 8px"><span class="${tx.type==='Buy'?'type-b':'type-s'}">${tx.type}</span></td>
+      <td style="padding:6px 8px;font-weight:700;color:var(--gold)">${tx.ticker}</td>
+      <td style="padding:6px 8px;font-family:var(--mono);color:var(--text2);font-size:.68rem">${tx.date}</td>
+      <td style="padding:6px 8px;font-family:var(--mono)">${tx.price.toLocaleString('en-US',{maximumFractionDigits:4})}</td>
+      <td style="padding:6px 8px;font-family:var(--mono)">${tx.shares.toLocaleString('en-US',{maximumFractionDigits:6})}</td>
+      <td style="padding:6px 8px">${curBtn}</td>
+      <td style="padding:6px 8px;font-family:var(--mono);font-weight:${isBig?'700':'400'};color:${isBig?'var(--red)':'var(--text2)'}">
+        ${thbFmt}${isBig?` <span style="font-size:.6rem">⚠</span>`:''}
+      </td>
+      <td style="padding:6px 8px;color:var(--muted);font-size:.68rem;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${tx.note||'—'}</td>
+    </tr>`;
+  }).join('');
+
+  btn.textContent = `✅ นำเข้า ${importData.length} รายการ`;
+
   el.innerHTML = `
-    <div style="color:var(--green);font-size:.8rem;font-weight:600;margin-bottom:8px">
-      ✅ พบ ${importData.length} รายการพร้อมนำเข้า
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+      <div style="color:var(--green);font-size:.8rem;font-weight:600">✅ พบ ${importData.length} รายการ</div>
+      <div style="font-size:.75rem;color:var(--text2)">มูลค่ารวม: <strong style="color:${grandTHB>10000000?'var(--red)':'var(--gold)'}">
+        ${grandTHB>=1e6?'฿'+(grandTHB/1e6).toFixed(2)+'M':'฿'+Math.round(grandTHB).toLocaleString('th-TH')}
+      </strong></div>
     </div>
-    ${errHtml}
+    ${errHtml}${suspectHtml}
     <div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px">
       <table style="width:100%;border-collapse:collapse;font-size:.72rem">
         <thead>
           <tr style="background:var(--s2)">
-            ${['Type','Ticker','วันที่','ราคา','จำนวน','Currency','คอม','Note'].map(h=>
-              `<th style="padding:7px 10px;text-align:left;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap">${h}</th>`
+            ${['Type','Ticker','วันที่','ราคา','จำนวน','Currency (กด=เปลี่ยน)','มูลค่า THB','Note'].map(h=>
+              `<th style="padding:7px 8px;text-align:left;font-size:.58rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);white-space:nowrap">${h}</th>`
             ).join('')}
           </tr>
         </thead>
-        <tbody>
-          ${preview.map((tx,idx)=>`
-            <tr style="border-top:1px solid var(--b2);${idx%2===1?'background:rgba(255,255,255,.01)':''}">
-              <td style="padding:7px 10px"><span class="${tx.type==='Buy'?'type-b':'type-s'}">${tx.type}</span></td>
-              <td style="padding:7px 10px;font-weight:700;color:var(--gold)">${tx.ticker}</td>
-              <td style="padding:7px 10px;font-family:var(--mono);color:var(--text2)">${tx.date}</td>
-              <td style="padding:7px 10px;font-family:var(--mono)">${tx.price.toLocaleString('en-US',{maximumFractionDigits:4})}</td>
-              <td style="padding:7px 10px;font-family:var(--mono)">${tx.shares.toLocaleString('en-US',{maximumFractionDigits:6})}</td>
-              <td style="padding:7px 10px;color:var(--text2)">${tx.currency}</td>
-              <td style="padding:7px 10px;font-family:var(--mono);color:var(--muted)">${tx.commission||0}</td>
-              <td style="padding:7px 10px;color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${tx.note||'—'}</td>
-            </tr>`).join('')}
-        </tbody>
+        <tbody>${rows}</tbody>
       </table>
     </div>
-    ${importData.length>12?`<div style="font-size:.7rem;color:var(--muted);text-align:center;margin-top:6px">... แสดง 12 จาก ${importData.length} รายการ</div>`:''}
+    ${importData.length>15?`<div style="font-size:.7rem;color:var(--muted);text-align:center;margin-top:6px">แสดงทั้งหมด ${importData.length} รายการ</div>`:''}
     <div style="margin-top:10px;padding:8px 12px;background:var(--s2);border-radius:6px;font-size:.72rem;color:var(--text2)">
-      💡 รายการที่นำเข้าจะ<strong>เพิ่มเข้าพอร์ต</strong>ที่มีอยู่ ไม่ได้แทนที่ข้อมูลเดิม
+      💡 กดปุ่ม <strong>Currency</strong> แต่ละแถวเพื่อสลับ THB ↔ USD ก่อน import ได้เลย
     </div>`;
 }
 
