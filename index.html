@@ -427,7 +427,7 @@ body{display:flex;min-height:100vh;overflow-x:hidden}
   <div class="brand"><h1>◈ Portfolio Tracker</h1><p>DCA Investment Dashboard</p></div>
   <div class="hdr-r">
     <div class="pill"><label>USD/THB</label><input type="number" id="rateI" value="33" step=".1" onchange="onRate()"></div>
-    <div class="pill"><label>💵 เงินสด</label><input class="cash" type="number" id="cashI" value="0" step="100" placeholder="0" onchange="renderStats()"></div>
+    <div class="pill"><label>💵 เงินสด</label><input class="cash" type="number" id="cashI" value="0" step="100" placeholder="0" onchange="onCashChange(this)"></div>
     <div class="tog">
       <button class="tog-btn on" id="bTHB" onclick="setCur('THB')">฿ THB</button>
       <button class="tog-btn"   id="bUSD" onclick="setCur('USD')">$ USD</button>
@@ -1361,7 +1361,15 @@ const save=()=>{
   localStorage.setItem('pACv5',JSON.stringify(actuals));
   localStorage.setItem('pRTv5',String(rate));
   localStorage.setItem('pCRv5',dispCur);
+  // บันทึกยอดเงินสด
+  const cashEl=document.getElementById('cashI');
+  if(cashEl) localStorage.setItem('pCASHv5', cashEl.value||'0');
 };
+
+function onCashChange(inp){
+  localStorage.setItem('pCASHv5', inp.value||'0');
+  renderStats();
+}
 
 /* ═══════════════════════════════════════════
    HELPERS
@@ -2544,6 +2552,9 @@ let curBgTheme = localStorage.getItem('gtBgTheme') || 'dark-black';
 ═══════════════════════════════════════════ */
 initThemes();
 document.getElementById('rateI').value=rate;
+// Restore ยอดเงินสดจาก localStorage
+const _savedCash = localStorage.getItem('pCASHv5');
+if(_savedCash !== null) document.getElementById('cashI').value = _savedCash;
 document.getElementById('aPx').addEventListener('input',updatePrev);
 document.getElementById('aQty').addEventListener('input',updatePrev);
 
