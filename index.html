@@ -416,6 +416,7 @@ body{display:flex;min-height:100vh;overflow-x:hidden}
     <button class="btn btn-blue" onclick="fetchAllPrices()">🔄 ดึงราคา</button>
     <span class="price-status" id="pxStatus">—</span>
     <button class="btn btn-ghost" onclick="exportCSV()">⬇ CSV</button>
+    <button class="btn btn-ghost" onclick="openDataDoctor()" title="ตรวจสอบและซ่อมข้อมูล">🩺 ตรวจข้อมูล</button>
     <button class="btn btn-gold"  onclick="openAdd()">+ เพิ่มรายการ</button>
     <label class="btn btn-ghost" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px" title="นำเข้าไฟล์ Excel / CSV">
       📥 นำเข้า Excel
@@ -426,6 +427,7 @@ body{display:flex;min-height:100vh;overflow-x:hidden}
 
 <div class="ticker"><div class="tk-inner" id="tkEl"></div></div>
 
+<div id="dataWarnBanner" style="display:none;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);border-radius:8px;padding:10px 14px;font-size:.78rem;color:var(--red);align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px"></div>
 <div class="stats" id="statsEl"></div>
 </div><!-- /tab-panel overview -->
 
@@ -794,7 +796,26 @@ function importExcel(event) {
         if (isNaN(price) || price <= 0) { errors.push(`แถว ${i+1} (${ticker}): ราคาไม่ถูกต้อง "${priceStr}"`); continue; }
         if (isNaN(shares) || shares <= 0) { errors.push(`แถว ${i+1} (${ticker}): จำนวนไม่ถูกต้อง "${sharesStr}"`); continue; }
 
-        const currency = rawCur === 'USD' ? 'USD' : 'THB';
+        // Smart currency: known tickers → force their standard currency
+        // Unknown tickers → use what's in the file, default THB
+        let currency;
+        if (TICKER_CUR[ticker]) {
+          currency = TICKER_CUR[ticker]; // e.g. BTC-USD→USD, PTT→THB
+        } else if (rawCur === 'USD') {
+          // Unknown ticker + USD: if price > 500,000 it's probably THB, warn
+          currency = 'USD';
+          if (price > 500000) {
+            errors.push(`แถว ${i+1} (${ticker}): ราคา ${price.toLocaleString()} สูงมากสำหรับ USD — อาจต้องเปลี่ยนเป็น THB`);
+          }
+        } else {
+          currency = 'THB'; // default safe
+        }
+
+        // Final sanity: if totTHB > 10M per unit, flag it
+        const totTHB = (currency==='USD' ? price*rate : price) * shares;
+        if (totTHB > 10000000) {
+          errors.push(`⚠️ แถว ${i+1} (${ticker}): มูลค่ารวม ฿${Math.round(totTHB/1e6)}M สูงผิดปกติ — ตรวจสอบ ราคา/สกุล`);
+        }
 
         importData.push({
           id: Date.now() + Math.random(),
@@ -898,7 +919,101 @@ function downloadTemplate() {
   XLSX.utils.book_append_sheet(wb, ws, 'Transactions');
   XLSX.writeFile(wb, 'portfolio_template.xlsx');
 }
+
+/* ─── DATA DOCTOR ─── */
+function openDataDoctor(){
+  const suspects=txs.filter(tx=>prTHB(tx)>500000);
+  const el=document.getElementById('ddBody');
+  if(!suspects.length){
+    el.innerHTML=`<div style="text-align:center;padding:30px;color:var(--green);font-size:.9rem">✅ ไม่พบรายการที่ผิดปกติ — ข้อมูลดูถูกต้องทั้งหมด</div>`;
+  }else{
+    el.innerHTML=`
+      <div style="color:var(--red);font-size:.8rem;margin-bottom:10px">⚠️ พบ ${suspects.length} รายการที่ราคา/หน่วย (THB) เกิน ฿500,000 — อาจเกิดจาก Currency ผิด</div>
+      <div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:10px">
+        <table style="width:100%;border-collapse:collapse;font-size:.74rem">
+          <thead><tr style="background:var(--s2)">
+            <th style="padding:7px 10px;text-align:left;color:var(--muted);font-size:.6rem;text-transform:uppercase">Ticker</th>
+            <th style="padding:7px 10px;text-align:left;color:var(--muted);font-size:.6rem;text-transform:uppercase">วันที่</th>
+            <th style="padding:7px 10px;text-align:left;color:var(--muted);font-size:.6rem;text-transform:uppercase">ราคาต้นฉบับ</th>
+            <th style="padding:7px 10px;text-align:left;color:var(--muted);font-size:.6rem;text-transform:uppercase">สกุล</th>
+            <th style="padding:7px 10px;text-align:left;color:var(--red);font-size:.6rem;text-transform:uppercase">ราคา THB/หน่วย</th>
+            <th style="padding:7px 10px;text-align:center;color:var(--muted);font-size:.6rem;text-transform:uppercase">แก้ไข</th>
+          </tr></thead>
+          <tbody>
+            ${suspects.map(tx=>`<tr style="border-top:1px solid var(--b2)">
+              <td style="padding:7px 10px;font-weight:700;color:var(--gold)">${tx.ticker}</td>
+              <td style="padding:7px 10px;font-family:var(--mono);color:var(--text2)">${tx.date}</td>
+              <td style="padding:7px 10px;font-family:var(--mono)">${tx.price.toLocaleString('en-US',{maximumFractionDigits:4})} <span style="color:var(--text2)">${tx.currency}</span></td>
+              <td style="padding:7px 10px"><span style="color:${tx.currency==='USD'?'var(--blue)':'var(--green)'};font-weight:700">${tx.currency}</span></td>
+              <td style="padding:7px 10px;font-family:var(--mono);color:var(--red);font-weight:700">฿${Math.round(prTHB(tx)).toLocaleString()}</td>
+              <td style="padding:7px 10px;text-align:center">
+                <button class="btn btn-ghost" style="font-size:.65rem;padding:3px 9px"
+                  onclick="fixTxCurrency(${tx.id},'${tx.currency==='USD'?'THB':'USD'}')">
+                  → ${tx.currency==='USD'?'฿ THB':'$ USD'}
+                </button>
+              </td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+        <button class="btn btn-ghost" style="font-size:.72rem" onclick="fixAllSuspects('THB')">⚡ เปลี่ยนทั้งหมดเป็น ฿ THB</button>
+        <button class="btn btn-ghost" style="font-size:.72rem" onclick="fixAllSuspects('USD')">⚡ เปลี่ยนทั้งหมดเป็น $ USD</button>
+      </div>`;
+  }
+  const tot=portfolioTotals();
+  document.getElementById('ddTotals').innerHTML=`
+    <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:.75rem;color:var(--text2);padding:10px 0">
+      <span>รายการทั้งหมด: <strong style="color:var(--text)">${txs.length}</strong></span>
+      <span style="color:var(--green)">ปกติ: <strong>${txs.length-suspects.length}</strong></span>
+      <span style="color:var(--red)">ผิดปกติ: <strong>${suspects.length}</strong></span>
+      <span>เงินลงทุนรวม: <strong>${fmtV(tot.buyC)}</strong></span>
+      <span>รับจากขาย: <strong style="color:${tot.sellP>tot.buyC*5?'var(--red)':'var(--text)'}">${fmtV(tot.sellP)}</strong></span>
+    </div>`;
+  openModal('ddMod');
+}
+
+function fixTxCurrency(id, newCur){
+  const tx=txs.find(t=>t.id===id);
+  if(!tx)return;
+  tx.currency=newCur;
+  save(); openDataDoctor(); renderAll();
+}
+
+function fixAllSuspects(newCur){
+  const suspects=txs.filter(tx=>prTHB(tx)>500000);
+  if(!confirm(`เปลี่ยน ${suspects.length} รายการเป็น ${newCur}?`))return;
+  suspects.forEach(tx=>{ tx.currency=newCur; });
+  save(); openDataDoctor(); renderAll();
+}
+
+function clearAllData(){
+  if(!confirm('⚠️ ล้างข้อมูลทั้งหมด\n\nTransaction และราคาทั้งหมดจะถูกลบ\nไม่สามารถกู้คืนได้'))return;
+  if(!confirm('ยืนยันอีกครั้ง — ล้างข้อมูลจริงหรือไม่?'))return;
+  txs=[]; prices={...DEF_P}; actuals={};
+  ['pTXv5','pPXv5','pACv5'].forEach(k=>localStorage.removeItem(k));
+  renderAll(); closeModal('ddMod'); alert('✅ ล้างข้อมูลเรียบร้อย');
+}
 </script>
+
+<!-- DATA DOCTOR MODAL -->
+<div class="ov" id="ddMod" onclick="bgClose(event,'ddMod')">
+<div class="modal" style="width:min(780px,96%);max-height:92vh">
+  <div class="m-h">
+    <h2>🩺 Data Doctor — ตรวจสอบและซ่อมข้อมูล</h2>
+    <button class="m-x" onclick="closeModal('ddMod')">✕</button>
+  </div>
+  <div id="ddTotals"></div>
+  <div id="ddBody" style="min-height:80px"></div>
+  <div style="height:1px;background:var(--border);margin:14px 0"></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+    <button class="btn" style="background:rgba(248,113,113,.15);border:1px solid rgba(248,113,113,.3);color:var(--red);font-size:.72rem"
+      onclick="clearAllData()">🗑 ล้างข้อมูลทั้งหมด</button>
+    <button class="btn btn-ghost" onclick="closeModal('ddMod')">ปิด</button>
+  </div>
+</div>
+</div>
+
 <div class="modal">
   <div class="m-h"><h2 id="txTitle">+ เพิ่มรายการ</h2><button class="m-x" onclick="closeModal('txMod')">✕</button></div>
   <div class="fg2">
@@ -907,7 +1022,8 @@ function downloadTemplate() {
     <div class="fg"><label>วันที่</label><input type="date" id="aDate"></div>
   </div>
   <div class="fg"><label>สินทรัพย์ (Ticker)</label>
-    <input type="text" id="aTick" list="tickDL" placeholder="MSFT, BTC-USD, PTT..." autocomplete="off">
+    <input type="text" id="aTick" list="tickDL" placeholder="MSFT, BTC-USD, PTT..." autocomplete="off"
+      oninput="onTickerInput()">
     <datalist id="tickDL"></datalist></div>
   <div class="ssep">หุ้นไทย</div>
   <div class="chips" id="thChips"></div>
@@ -1416,6 +1532,17 @@ function renderTicker(){
 
 function renderStats(){
   const tot=portfolioTotals();
+  // Show warning banner if sell proceeds are way larger than buy cost
+  const warnEl=document.getElementById('dataWarnBanner');
+  if(warnEl){
+    const isCorrupt=tot.sellP>tot.buyC*5&&tot.sellP>1000000;
+    warnEl.style.display=isCorrupt?'flex':'none';
+    if(isCorrupt) warnEl.innerHTML=`
+      <span>⚠️ <strong>ข้อมูลดูผิดปกติ</strong> — รับจากขาย ${fmtV(tot.sellP)} สูงกว่าเงินลงทุน ${fmtV(tot.buyC)} มาก อาจมีปัญหาเรื่อง Currency</span>
+      <button class="btn" style="background:rgba(248,113,113,.2);border:1px solid rgba(248,113,113,.4);color:var(--red);font-size:.7rem;padding:4px 10px;flex-shrink:0"
+        onclick="openDataDoctor()">🩺 ตรวจสอบ</button>`;
+  }
+  const tot=portfolioTotals();
   const sp5equiv=calcSP500Equiv();
   const cashTHB=(parseFloat(document.getElementById('cashI').value)||0);
   const best=tot.assets.filter(a=>!a.closed).reduce((b,a)=>{
@@ -1741,11 +1868,15 @@ function renderTxTable(){
   if(!sorted.length){document.getElementById('txBody').innerHTML=`<tr><td colspan="10" style="text-align:center;padding:36px;color:var(--muted)">ยังไม่มีรายการ</td></tr>`;return;}
   document.getElementById('txBody').innerHTML=sorted.map(tx=>{
     const pTHB=prTHB(tx),pUSD=prUSD(tx),tot=pTHB*tx.shares;
-    return `<tr>
+    const isSuspect=pTHB>1000000; // >1M THB per unit is suspicious
+    return `<tr style="${isSuspect?'background:rgba(248,113,113,.05);border-left:2px solid rgba(248,113,113,.4)':''}">
       <td><span class="type-${tx.type==='Buy'?'b':'s'}">${tx.type==='Buy'?'ซื้อ':'ขาย'}</span></td>
       <td><span class="chip" style="color:var(--gold)">${tx.ticker}</span></td>
       <td style="color:var(--text2)">${fmtDate(tx.date)}</td>
-      <td><div class="dual-price"><div class="dual-primary">฿${Math.round(pTHB).toLocaleString('th-TH')}</div></div></td>
+      <td><div class="dual-price">
+        <div class="dual-primary">฿${Math.round(pTHB).toLocaleString('th-TH')}</div>
+        ${isSuspect?`<div style="font-size:.6rem;color:var(--red)">⚠ ราคาสูงผิดปกติ</div>`:''}
+      </div></td>
       <td><div class="dual-price"><div class="dual-primary">$${pUSD.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:4})}</div><div class="dual-sec">${tx.currency} original</div></div></td>
       <td style="font-family:var(--mono)">${tx.shares.toFixed(6)}</td>
       <td style="font-family:var(--mono)" class="${tx.type==='Buy'?'red':'green'}">${tx.type==='Buy'?'-':'+'}${fmtV(tot)}</td>
@@ -2177,10 +2308,31 @@ function updatePrev(){
   const cur=document.getElementById('aCur').value;
   const prev=document.getElementById('prev');
   if(px&&qty){
-    const tot=px*qty;
+    const totInCur=px*qty;
+    const totTHB=cur==='USD'?totInCur*rate:totInCur;
+    const totUSD=cur==='USD'?totInCur:totInCur/rate;
+    const isBig=totTHB>2000000;
     prev.style.display='block';
-    prev.innerHTML=`มูลค่ารวม: <strong style="color:var(--gold)">${cur==='USD'?'$':' ฿'}${tot.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong>${cur==='USD'?` = ฿${Math.round(tot*rate).toLocaleString('th-TH')}`:''}`;
-  }else prev.style.display='none';
+    prev.style.background=isBig?'rgba(248,113,113,.08)':'';
+    prev.style.border=isBig?'1px solid rgba(248,113,113,.3)':'';
+    prev.innerHTML=`
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span>มูลค่ารวม:</span>
+        <strong style="color:${isBig?'var(--red)':'var(--gold)'}">
+          ${cur==='USD'?'$'+totInCur.toLocaleString('en-US',{maximumFractionDigits:4}):'฿'+totInCur.toLocaleString('th-TH',{maximumFractionDigits:2})}
+        </strong>
+        <span style="color:var(--muted);font-size:.68rem">= ฿${Math.round(totTHB).toLocaleString('th-TH')} / $${totUSD.toLocaleString('en-US',{maximumFractionDigits:2})}</span>
+      </div>
+      ${isBig?`<div style="color:var(--red);font-size:.7rem;margin-top:4px">⚠️ มูลค่าสูงผิดปกติ — ตรวจสอบ ราคา และ สกุลเงิน ให้ถูกต้อง</div>`:''}`;
+  }else{prev.style.display='none';prev.style.background='';prev.style.border='';}
+}
+
+function onTickerInput(){
+  const t=document.getElementById('aTick').value.toUpperCase().trim();
+  const c=TICKER_CUR[t];
+  if(c) document.getElementById('aCur').value=c;
+  if(prices[t]&&prices[t]>0) document.getElementById('aPx').value=prices[t];
+  updatePrev();
 }
 function saveTx(){
   const type=document.getElementById('aType').value;
@@ -2191,11 +2343,26 @@ function saveTx(){
   const cur=document.getElementById('aCur').value;
   const com=parseFloat(document.getElementById('aCom').value)||0;
   const note=document.getElementById('aNote').value.trim();
-  if(!date||!ticker||isNaN(price)||price<=0||isNaN(shares)||shares<=0){alert('กรุณากรอกข้อมูลให้ครบ');return;}
+  if(!date||!ticker||isNaN(price)||price<=0||isNaN(shares)||shares<=0){alert('กรุณากรอกข้อมูลให้ครบถ้วน');return;}
+  // Sanity check: warn if single transaction exceeds 2M THB
+  const totTHB=(cur==='USD'?price*rate:price)*shares;
+  if(totTHB>2000000){
+    const ok=confirm(
+      `⚠️ มูลค่ารายการนี้สูงผิดปกติ\n\n`+
+      `ราคา ${price.toLocaleString()} ${cur} × ${shares} หน่วย\n`+
+      `= ฿${Math.round(totTHB).toLocaleString()} (${(totTHB/1e6).toFixed(2)}ล้านบาท)\n\n`+
+      `หาก Ticker นี้ควรเป็น ${cur==='USD'?'฿ THB':'$ USD'} โปรดเปลี่ยนสกุลเงินก่อน\n\n`+
+      `ยืนยันบันทึกต่อหรือไม่?`
+    );
+    if(!ok)return;
+  }
   if(editId){
     const idx=txs.findIndex(t=>t.id===editId);
     if(idx>-1)txs[idx]={...txs[idx],type,date,ticker,price,currency:cur,shares,commission:com,note};
-  }else{if(!prices[ticker])prices[ticker]=0;txs.push({id:Date.now(),type,date,ticker,price,currency:cur,shares,commission:com,note});}
+  }else{
+    if(!prices[ticker])prices[ticker]=0;
+    txs.push({id:Date.now(),type,date,ticker,price,currency:cur,shares,commission:com,note});
+  }
   closeModal('txMod');editId=null;renderAll();
 }
 function delTx(id){if(!confirm('ลบรายการนี้?'))return;txs=txs.filter(t=>t.id!==id);renderAll();}
