@@ -465,29 +465,29 @@ body{display:flex;min-height:100vh;overflow-x:hidden}
       <div class="gf">
         <label>เงินเริ่มต้น (฿)</label>
         <div class="gf-input-row">
-          <input type="range" id="gI_s" min="0" max="100000" step="1000" value="2000" oninput="syncG('gI', this.value)">
-          <input type="number" id="gI" value="2000" oninput="syncG('gI_s', this.value)">
+          <input type="range" id="gI_s" min="0" max="100000" step="1000" value="2000" oninput="syncG('gI', this.value)" onchange="syncG('gI', this.value)">
+          <input type="number" id="gI" value="2000" oninput="syncG('gI_s', this.value)" onchange="syncG('gI_s', this.value)">
         </div>
       </div>
       <div class="gf">
         <label>DCA/เดือน (฿)</label>
         <div class="gf-input-row">
-          <input type="range" id="gM_s" min="500" max="50000" step="500" value="2000" oninput="syncG('gM', this.value)">
-          <input type="number" id="gM" value="2000" oninput="syncG('gM_s', this.value)">
+          <input type="range" id="gM_s" min="500" max="50000" step="500" value="2000" oninput="syncG('gM', this.value)" onchange="syncG('gM', this.value)">
+          <input type="number" id="gM" value="2000" oninput="syncG('gM_s', this.value)" onchange="syncG('gM_s', this.value)">
         </div>
       </div>
       <div class="gf">
         <label>ผลตอบแทน %/ปี</label>
         <div class="gf-input-row">
-          <input type="range" id="gR_s" min="1" max="25" step="0.5" value="10" oninput="syncG('gR', this.value)">
-          <input type="number" id="gR" value="10" step="0.5" oninput="syncG('gR_s', this.value)">
+          <input type="range" id="gR_s" min="1" max="25" step="0.5" value="10" oninput="syncG('gR', this.value)" onchange="syncG('gR', this.value)">
+          <input type="number" id="gR" value="10" step="0.5" oninput="syncG('gR_s', this.value)" onchange="syncG('gR_s', this.value)">
         </div>
       </div>
       <div class="gf">
         <label>ระยะเวลา (ปี)</label>
         <div class="gf-input-row">
-          <input type="range" id="gYr_s" min="1" max="40" step="1" value="20" oninput="syncG('gYr', this.value)">
-          <input type="number" id="gYr" value="20" oninput="syncG('gYr_s', this.value)">
+          <input type="range" id="gYr_s" min="1" max="40" step="1" value="20" oninput="syncG('gYr', this.value)" onchange="syncG('gYr', this.value)">
+          <input type="number" id="gYr" value="20" oninput="syncG('gYr_s', this.value)" onchange="syncG('gYr_s', this.value)">
         </div>
       </div>
       <div class="gf">
@@ -1350,6 +1350,16 @@ let prices  = JSON.parse(localStorage.getItem('pPXv5') ||'null')     || {...DEF_
 let actuals = JSON.parse(localStorage.getItem('pACv5') ||'{}');
 let rate    = parseFloat(localStorage.getItem('pRTv5') ||'33');
 let dispCur = localStorage.getItem('pCRv5') || 'THB';
+// ── Goal Tracker state — โหลดจาก localStorage ทันที (เหมือน rate) ──
+const _gRaw = JSON.parse(localStorage.getItem('pGOALv5')||'null');
+let gVal = {
+  gI:  _gRaw?.gI  ?? 2000,
+  gM:  _gRaw?.gM  ?? 2000,
+  gR:  _gRaw?.gR  ?? 10,
+  gYr: _gRaw?.gYr ?? 20,
+  gSY: _gRaw?.gSY ?? 2026,
+  gSM: _gRaw?.gSM ?? 1,
+};
 let editId  = null;
 let chartPd = '1m', psPd = 'all', spPd = '1y';
 let psStart = 100; // fraction 0-100 for nav slider
@@ -1361,6 +1371,7 @@ const save=()=>{
   localStorage.setItem('pACv5',JSON.stringify(actuals));
   localStorage.setItem('pRTv5',String(rate));
   localStorage.setItem('pCRv5',dispCur);
+  localStorage.setItem('pGOALv5',JSON.stringify(gVal));
   // บันทึกยอดเงินสด
   const cashEl=document.getElementById('cashI');
   if(cashEl) localStorage.setItem('pCASHv5', cashEl.value||'0');
@@ -1431,14 +1442,12 @@ function syncG(id, val) {
 }
 
 function saveGoal(){
-  localStorage.setItem('pGOALv5', JSON.stringify({
-    gI:  document.getElementById('gI').value,
-    gM:  document.getElementById('gM').value,
-    gR:  document.getElementById('gR').value,
-    gYr: document.getElementById('gYr').value,
-    gSY: document.getElementById('gSY').value,
-    gSM: document.getElementById('gSM').value,
-  }));
+  // อัพเดท gVal variable จาก DOM แล้ว save ทันที
+  ['gI','gM','gR','gYr','gSY','gSM'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el && el.value!=='') gVal[id] = el.value;
+  });
+  localStorage.setItem('pGOALv5', JSON.stringify(gVal));
 }
 
 /* ═══════════════════════════════════════════
@@ -2567,17 +2576,16 @@ document.getElementById('rateI').value=rate;
 // Restore ยอดเงินสดจาก localStorage
 const _savedCash = localStorage.getItem('pCASHv5');
 if(_savedCash !== null) document.getElementById('cashI').value = _savedCash;
-// Restore Goal Tracker settings
-const _savedGoal = JSON.parse(localStorage.getItem('pGOALv5')||'null');
-if(_savedGoal){
-  const set=(id,v)=>{const el=document.getElementById(id);if(el&&v!==undefined)el.value=v;};
-  set('gI',_savedGoal.gI); set('gI_s',_savedGoal.gI);
-  set('gM',_savedGoal.gM); set('gM_s',_savedGoal.gM);
-  set('gR',_savedGoal.gR); set('gR_s',_savedGoal.gR);
-  set('gYr',_savedGoal.gYr); set('gYr_s',_savedGoal.gYr);
-  set('gSY',_savedGoal.gSY);
-  set('gSM',_savedGoal.gSM);
-}
+// Restore Goal Tracker — gVal โหลดจาก localStorage แล้วตั้งแต่ต้น ใส่ค่าลง DOM เลย
+(function restoreGoalDOM(){
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v;};
+  set('gI',   gVal.gI);  set('gI_s',  gVal.gI);
+  set('gM',   gVal.gM);  set('gM_s',  gVal.gM);
+  set('gR',   gVal.gR);  set('gR_s',  gVal.gR);
+  set('gYr',  gVal.gYr); set('gYr_s', gVal.gYr);
+  set('gSY',  gVal.gSY);
+  set('gSM',  gVal.gSM);
+})();
 document.getElementById('aPx').addEventListener('input',updatePrev);
 document.getElementById('aQty').addEventListener('input',updatePrev);
 
