@@ -1928,7 +1928,7 @@ function renderHoldingsTable(){
     const isUSD=TICKER_CUR[a.ticker]==='USD';
     const stored=prices[a.ticker]||0;
     const priceUSD=isUSD?stored:stored/rate;
-    const avgUSD=isUSD?a.avg:a.avg/rate;
+    const avgUSD=a.avg/rate;  // avg เก็บในหน่วย THB เสมอ → หารด้วย rate เพื่อแปลงเป็น USD
     const alloc=totalVal>0?a.cVal/totalVal*100:0;
     const unrPct=a.cOpen>0?a.unr/a.cOpen*100:0;
     const gc=a.unr>=0?'green':'red'; const pc=unrPct>=0?'green':'red';
@@ -2334,7 +2334,7 @@ function renderStockChart(ticker,histData){
 
   const a=computeAssets().find(x=>x.ticker===ticker);
   if(a){
-    const avgUSD=isUSD?a.avg:a.avg/rate;
+    const avgUSD=a.avg/rate;  // avg เก็บในหน่วย THB เสมอ → หารด้วย rate เพื่อแปลงเป็น USD
     const curUSD=isUSD?prices[ticker]||0:(prices[ticker]||0)/rate;
     document.getElementById('stockInfo').innerHTML=`
       <div class="stock-info-bar">
