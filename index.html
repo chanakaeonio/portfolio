@@ -42,7 +42,11 @@ body{font-family:var(--fn);background:var(--bg,#07090d);color:var(--text);min-he
 .theme-bar { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; background:var(--s1); padding:8px 12px; border-radius:8px; border:1px solid var(--border); align-items:center;}
 .theme-btn { width:20px; height:20px; border-radius:50%; border:2px solid transparent; cursor:pointer; transition:transform .2s; }
 .theme-btn:hover { transform:scale(1.2); }
-.theme-btn.active { border-color:#fff; }
+.theme-btn.active { border-color:#fff; box-shadow:0 0 0 1px rgba(255,255,255,.3); }
+.paired-btn{width:26px;height:26px;border-radius:6px;border:2px solid transparent;cursor:pointer;transition:transform .18s;flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+.paired-btn:hover{transform:scale(1.18);border-color:rgba(255,255,255,.5)}
+.paired-btn.active{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.3)}
+.paired-sep{width:1px;height:22px;background:var(--border);flex-shrink:0;margin:0 4px}
 
 /* ─── HEADER ─── */
 header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px}
@@ -399,14 +403,17 @@ body{display:flex;min-height:100vh;overflow-x:hidden}
 <div class="wrap">
 
 <div id="tab-overview" class="tab-panel active">
-<div class="theme-bar" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-  <span style="font-size:0.65rem;color:var(--muted);font-weight:600;text-transform:uppercase;">🎨 Accent Color:</span>
-  <div id="themeBtns" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+<div class="theme-bar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+  <span style="font-size:0.62rem;color:var(--muted);font-weight:600;text-transform:uppercase;white-space:nowrap">🎨 Accent:</span>
+  <div id="themeBtns" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
+  <div class="paired-sep"></div>
+  <span style="font-size:0.62rem;color:var(--muted);font-weight:600;text-transform:uppercase;white-space:nowrap">🎭 คู่สี:</span>
+  <div id="pairedBtns" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
   <div style="margin-left:auto">
     <div class="bg-theme-wrap">
       <button class="bg-theme-btn" id="bgThemeBtn" onclick="toggleBgPanel(event)">
         <div id="bgDot" style="width:12px;height:12px;border-radius:3px;background:#07090d;border:1px solid rgba(255,255,255,.3);flex-shrink:0"></div>
-        🎭 พื้นหลัง
+        พื้นหลัง
       </button>
       <div class="bg-theme-panel" id="bgThemePanel">
         <div class="btp-title">เลือกโทนสีพื้นหลัง</div>
@@ -1146,7 +1153,7 @@ function toggleSidebar(){
 }
 
 /* ═══════════════════════════════════════════
-   THEMES (15 Colors)
+   THEMES (16 Colors + Black)
 ═══════════════════════════════════════════ */
 const THEMES = [
   {id:'gold',    n:'Gold',    c1:'#e8b86d', c2:'#f5d08a'},
@@ -1163,31 +1170,98 @@ const THEMES = [
   {id:'cyber',   n:'Cyberpunk',c1:'#eab308',c2:'#fef08a'},
   {id:'hacker',  n:'Hacker',  c1:'#22c55e', c2:'#86efac'},
   {id:'ocean',   n:'Ocean',   c1:'#0ea5e9', c2:'#7dd3fc'},
-  {id:'sunset',  n:'Sunset',  c1:'#f97316', c2:'#fdba74'}
+  {id:'sunset',  n:'Sunset',  c1:'#f97316', c2:'#fdba74'},
+  {id:'black',   n:'Black',   c1:'#1f2937', c2:'#374151'},
+  {id:'white',   n:'White',   c1:'#f8fafc', c2:'#e2e8f0'},
+];
+
+/* ═══════════════════════════════════════════
+   PAIRED THEMES (bg + accent คู่กัน) 10 ธีม
+═══════════════════════════════════════════ */
+const PAIRED_THEMES = [
+  {id:'pt-night-gold',   n:'Night × Gold',     bg:'#06101e',s1:'#0a1828',s2:'#0f2035',s3:'#162840',acc:'#e8b86d',acc2:'#f5d08a',text:'#dde4f0',text2:'#8896aa',muted:'#4a5568'},
+  {id:'pt-forest-mint',  n:'Forest × Mint',    bg:'#051410',s1:'#091d17',s2:'#0e261e',s3:'#143026',acc:'#34d399',acc2:'#6ee7b7',text:'#d1fae5',text2:'#6ee7b7',muted:'#3d7a6a'},
+  {id:'pt-cosmos-violet',n:'Cosmos × Violet',  bg:'#0a071a',s1:'#100c24',s2:'#16122e',s3:'#1e1a3c',acc:'#a855f7',acc2:'#d8b4fe',text:'#f3e8ff',text2:'#c084fc',muted:'#6d28d9'},
+  {id:'pt-volcano-flame',n:'Volcano × Flame',  bg:'#180b02',s1:'#221006',s2:'#2e160a',s3:'#3c1e10',acc:'#f97316',acc2:'#fdba74',text:'#fff7ed',text2:'#fb923c',muted:'#9a3412'},
+  {id:'pt-abyss-cyan',   n:'Abyss × Cyan',     bg:'#011518',s1:'#031e24',s2:'#052830',s3:'#08333d',acc:'#14b8a6',acc2:'#5eead4',text:'#e0f7f6',text2:'#5eead4',muted:'#0e7a6d'},
+  {id:'pt-onyx-rose',    n:'Onyx × Rose',      bg:'#130a10',s1:'#1e0f1a',s2:'#281624',s3:'#341e2e',acc:'#f472b6',acc2:'#fbcfe8',text:'#fdf2f8',text2:'#f9a8d4',muted:'#9d174d'},
+  {id:'pt-steel-blue',   n:'Steel × Blue',     bg:'#060d1c',s1:'#0b1428',s2:'#101c34',s3:'#172542',acc:'#3b82f6',acc2:'#93c5fd',text:'#eff6ff',text2:'#93c5fd',muted:'#1d4ed8'},
+  {id:'pt-carbon-ruby',  n:'Carbon × Ruby',    bg:'#110306',s1:'#1a0609',s2:'#220b0e',s3:'#2c1015',acc:'#f43f5e',acc2:'#fda4af',text:'#fff1f2',text2:'#fda4af',muted:'#9f1239'},
+  {id:'pt-eclipse-indigo',n:'Eclipse × Indigo',bg:'#050812',s1:'#090e1e',s2:'#0e152a',s3:'#141e38',acc:'#6366f1',acc2:'#a5b4fc',text:'#eef2ff',text2:'#a5b4fc',muted:'#4338ca'},
+  {id:'pt-dusk-amber',   n:'Dusk × Amber',     bg:'#130e01',s1:'#1c1502',s2:'#261c04',s3:'#322508',acc:'#f59e0b',acc2:'#fcd34d',text:'#fffbeb',text2:'#fcd34d',muted:'#92400e'},
 ];
 
 function initThemes(){
-  const savedTheme = localStorage.getItem('pTheme_v5') || 'gold';
-  document.getElementById('themeBtns').innerHTML = THEMES.map(t => 
-    `<div class="theme-btn ${t.id === savedTheme ? 'active' : ''}" 
-          style="background:${t.c1};" 
-          title="${t.n}" 
+  const savedPaired = localStorage.getItem('pPairedTheme');
+  const savedAccent = localStorage.getItem('pTheme_v5') || 'gold';
+
+  // Accent color dots
+  document.getElementById('themeBtns').innerHTML = THEMES.map(t =>
+    `<div class="theme-btn ${!savedPaired && t.id===savedAccent?'active':''}"
+          style="background:${t.c1};${t.id==='white'?'border:1px solid rgba(255,255,255,.3)':''}"
+          title="${t.n}"
           onclick="applyTheme('${t.id}')"></div>`
   ).join('');
-  applyTheme(savedTheme, false);
+
+  // Paired theme swatches
+  document.getElementById('pairedBtns').innerHTML = PAIRED_THEMES.map(t =>
+    `<div class="paired-btn ${savedPaired===t.id?'active':''}" id="paired_${t.id}"
+          title="${t.n}" onclick="applyPairedTheme('${t.id}')"
+          style="background:linear-gradient(135deg,${t.bg} 50%,${t.acc} 50%)"></div>`
+  ).join('');
+
+  // Restore theme
+  if (savedPaired) {
+    applyPairedTheme(savedPaired, false);
+  } else {
+    applyTheme(savedAccent, false);
+  }
 }
 
-function applyTheme(id, render = true){
-  const t = THEMES.find(x => x.id === id) || THEMES[0];
+function applyTheme(id, render=true){
+  const t = THEMES.find(x=>x.id===id) || THEMES[0];
   document.documentElement.style.setProperty('--gold', t.c1);
   document.documentElement.style.setProperty('--gold2', t.c2);
   localStorage.setItem('pTheme_v5', id);
-  
-  document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+  localStorage.removeItem('pPairedTheme');
+
+  document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.paired-btn').forEach(b=>b.classList.remove('active'));
   const activeBtn = document.querySelector(`.theme-btn[title="${t.n}"]`);
   if(activeBtn) activeBtn.classList.add('active');
 
-  if(render) renderAll(); // Re-render charts with new colors
+  if(render) renderAll();
+}
+
+function applyPairedTheme(id, render=true){
+  const t = PAIRED_THEMES.find(x=>x.id===id);
+  if (!t) return;
+
+  // Apply all bg+accent CSS vars directly
+  const vars = {
+    '--bg':t.bg,'--s1':t.s1,'--s2':t.s2,'--s3':t.s3,
+    '--card-bg':t.s1,
+    '--card-shadow':'0 4px 20px rgba(0,0,0,.65)',
+    '--card-border':'rgba(255,255,255,.07)',
+    '--border':'rgba(255,255,255,.07)',
+    '--b2':'rgba(255,255,255,.04)',
+    '--text':t.text,'--text2':t.text2,'--muted':t.muted,
+    '--gold':t.acc,'--gold2':t.acc2
+  };
+  Object.entries(vars).forEach(([k,v])=>document.documentElement.style.setProperty(k,v));
+  // Also clear data-bg-theme so CSS overrides don't conflict
+  document.body.removeAttribute('data-bg-theme');
+  curBgTheme = null;
+
+  localStorage.setItem('pPairedTheme', id);
+  if (document.getElementById('bgDot')) document.getElementById('bgDot').style.background = t.bg;
+
+  document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.paired-btn').forEach(b=>b.classList.remove('active'));
+  const btn = document.getElementById('paired_'+id);
+  if (btn) btn.classList.add('active');
+
+  if(render) renderAll();
 }
 
 /* ═══════════════════════════════════════════
