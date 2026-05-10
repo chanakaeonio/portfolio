@@ -1552,7 +1552,9 @@ function renderTicker(){
 
 function renderStats(){
   const tot=portfolioTotals();
-  // Show warning banner if sell proceeds are way larger than buy cost
+  const sp5equiv=calcSP500Equiv();
+  const cashTHB=(parseFloat(document.getElementById('cashI').value)||0);
+  // Warning banner: sell proceeds way larger than buy cost
   const warnEl=document.getElementById('dataWarnBanner');
   if(warnEl){
     const isCorrupt=tot.sellP>tot.buyC*5&&tot.sellP>1000000;
@@ -1562,9 +1564,6 @@ function renderStats(){
       <button class="btn" style="background:rgba(248,113,113,.2);border:1px solid rgba(248,113,113,.4);color:var(--red);font-size:.7rem;padding:4px 10px;flex-shrink:0"
         onclick="openDataDoctor()">🩺 ตรวจสอบ</button>`;
   }
-  const tot=portfolioTotals();
-  const sp5equiv=calcSP500Equiv();
-  const cashTHB=(parseFloat(document.getElementById('cashI').value)||0);
   const best=tot.assets.filter(a=>!a.closed).reduce((b,a)=>{
     return(!b||a.portRet>b.portRet)?a:b;
   },null);
