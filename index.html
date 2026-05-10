@@ -405,7 +405,7 @@ body{display:flex;min-height:100vh;overflow-x:hidden}
 <header>
   <div class="brand"><h1>◈ Portfolio Tracker</h1><p>DCA Investment Dashboard</p></div>
   <div class="hdr-r">
-    <div class="pill"><label>USD/THB</label><input type="number" id="rateI" value="33.5" step=".1" onchange="onRate()"></div>
+    <div class="pill"><label>USD/THB</label><input type="number" id="rateI" value="33" step=".1" onchange="onRate()"></div>
     <div class="pill"><label>💵 เงินสด</label><input class="cash" type="number" id="cashI" value="0" step="100" placeholder="0" onchange="renderStats()"></div>
     <div class="tog">
       <button class="tog-btn on" id="bTHB" onclick="setCur('THB')">฿ THB</button>
@@ -858,7 +858,7 @@ const TICKER_CUR={
   'AAPL':'USD','MSFT':'USD','GOOGL':'USD','AMZN':'USD','META':'USD','NVDA':'USD','TSLA':'USD','NFLX':'USD',
   'ASML':'USD','MSTR':'USD','NEM':'USD','PAAS':'USD','SILJ':'USD','AG':'USD','SLV':'USD','GLD':'USD',
   'SPY':'USD','QQQ':'USD',
-  'BTC-USD':'THB','ETH-USD':'THB','SOL-USD':'THB','BNB-USD':'THB','XRP-USD':'THB',
+  'BTC-USD':'USD','ETH-USD':'USD','SOL-USD':'USD','BNB-USD':'USD','XRP-USD':'USD',
   'PTT':'THB','PTTEP':'THB','KBANK':'THB','SCB':'THB','BBL':'THB','KTB':'THB',
   'AOT':'THB','CPALL':'THB','SCC':'THB','GULF':'THB','ADVANC':'THB','TRUE':'THB',
   'TU':'THB','HMPRO':'THB','BDMS':'THB','BH':'THB','CPN':'THB','CRC':'THB'
@@ -872,7 +872,7 @@ const DEF_P={
   'AAPL':590,'MSFT':410,'GOOGL':158,'AMZN':193,'META':560,'NVDA':115,'TSLA':262,'NFLX':1070,
   'ASML':680,'MSTR':350,'NEM':50,'PAAS':22,'SILJ':17,'AG':13,'SLV':35,'GLD':295,
   'SPY':528,'QQQ':450,
-  'BTC-USD':2500000,'ETH-USD':120000,'SOL-USD':4800,'BNB-USD':19000,'XRP-USD':72,
+  'BTC-USD':95000,'ETH-USD':2500,'SOL-USD':145,'BNB-USD':600,'XRP-USD':2.2,
   'PTT':35,'PTTEP':155,'KBANK':160,'SCB':125,'BBL':150,'KTB':18,
   'AOT':75,'CPALL':72,'SCC':190,'GULF':62,'ADVANC':215,'TRUE':5.5,
   'TU':17,'HMPRO':22,'BDMS':28,'BH':210,'CPN':62,'CRC':40
@@ -884,17 +884,18 @@ const SEED=[];
 /* ═══════════════════════════════════════════
    STATE
 ═══════════════════════════════════════════ */
-// v6: ล้างข้อมูล seed เก่าออก เริ่มต้นใหม่
-if(!localStorage.getItem('pCLEARED_v6')){
+// v7: เปลี่ยน crypto เป็น USD (สากล) — ล้างราคาเก่าที่เป็น THB ออก
+if(!localStorage.getItem('pCLEARED_v7')){
   localStorage.removeItem('pTXv5');
   localStorage.removeItem('pPXv5');
   localStorage.removeItem('pACv5');
-  localStorage.setItem('pCLEARED_v6','1');
+  localStorage.removeItem('pRTv5');
+  localStorage.setItem('pCLEARED_v7','1');
 }
 let txs     = JSON.parse(localStorage.getItem('pTXv5') ||'null')     || SEED;
 let prices  = JSON.parse(localStorage.getItem('pPXv5') ||'null')     || {...DEF_P};
 let actuals = JSON.parse(localStorage.getItem('pACv5') ||'{}');
-let rate    = parseFloat(localStorage.getItem('pRTv5') ||'33.5');
+let rate    = parseFloat(localStorage.getItem('pRTv5') ||'33');
 let dispCur = localStorage.getItem('pCRv5') || 'THB';
 let editId  = null;
 let chartPd = '1m', psPd = 'all', spPd = '1y';
@@ -1118,8 +1119,8 @@ async function fetchAllPrices(){
     );
     const d=await r.json();
     Object.entries(CG_MAP).forEach(([tick,id])=>{
-      if(d[id]?.thb){
-        prices[tick]=d[id].thb;
+      if(d[id]?.usd){
+        prices[tick]=d[id].usd;
         pxSrc[tick]='live';pxTime[tick]=Date.now();live++;
       }
     });
