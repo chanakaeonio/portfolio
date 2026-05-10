@@ -311,7 +311,19 @@ body[data-bg-theme="white-black"]{--bg:#ffffff;--s1:#f5f5f5;--s2:#eeeeee;--s3:#e
 body { background: var(--bg, #07090d); }
 
 
-/* ─── SIDEBAR NAV ─── */
+/* ─── COLLAPSIBLE CARDS ─── */
+.card-tog{background:none;border:1px solid var(--border);border-radius:5px;color:var(--muted);cursor:pointer;font-size:.65rem;padding:2px 7px;margin-left:auto;flex-shrink:0;transition:all .15s;line-height:1.4}
+.card-tog:hover{border-color:var(--gold);color:var(--gold)}
+.card-body{overflow:hidden;transition:max-height .3s ease,opacity .2s ease;max-height:9999px;opacity:1}
+.card-body.collapsed{max-height:0!important;opacity:0}
+.card-h{cursor:pointer;user-select:none}
+.card-h:hover .card-tog{border-color:var(--gold);color:var(--gold)}
+/* Stats row collapsible */
+.section-hdr{display:flex;align-items:center;justify-content:space-between;padding:0 2px;margin-bottom:8px}
+.section-hdr-lbl{font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.section-tog{background:none;border:1px solid var(--border);border-radius:5px;color:var(--muted);cursor:pointer;font-size:.62rem;padding:2px 8px;transition:all .15s}
+.section-tog:hover{border-color:var(--gold);color:var(--gold)}
+
 body{display:flex;min-height:100vh;overflow-x:hidden}
 .sidebar{position:fixed;left:0;top:0;bottom:0;width:210px;background:var(--card-bg,var(--s1));border-right:1px solid var(--border);z-index:500;display:flex;flex-direction:column;transition:width .25s ease;overflow:hidden}
 .sidebar.collapsed{width:50px}
@@ -428,7 +440,14 @@ body{display:flex;min-height:100vh;overflow-x:hidden}
 <div class="ticker"><div class="tk-inner" id="tkEl"></div></div>
 
 <div id="dataWarnBanner" style="display:none;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);border-radius:8px;padding:10px 14px;font-size:.78rem;color:var(--red);align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px"></div>
-<div class="stats" id="statsEl"></div>
+
+<div class="section-hdr" id="statsHdr">
+  <span class="section-hdr-lbl">📊 ภาพรวมพอร์ต</span>
+  <button class="section-tog" onclick="toggleSection('statsWrap','statsHdr',this)">▲ ซ่อน</button>
+</div>
+<div id="statsWrap">
+  <div class="stats" id="statsEl"></div>
+</div>
 </div><!-- /tab-panel overview -->
 
 <div id="tab-goal" class="tab-panel">
@@ -1014,6 +1033,7 @@ function clearAllData(){
 </div>
 </div>
 
+<div class="ov" id="txMod" onclick="bgClose(event,'txMod')">
 <div class="modal">
   <div class="m-h"><h2 id="txTitle">+ เพิ่มรายการ</h2><button class="m-x" onclick="closeModal('txMod')">✕</button></div>
   <div class="fg2">
@@ -2436,6 +2456,72 @@ setTimeout(()=>{
     selectStockTicker(selTicker);
   }
 },2000);
+
+/* ═══════════════════════════════════════════
+   COLLAPSIBLE CARDS & SECTIONS
+═══════════════════════════════════════════ */
+function toggleSection(bodyId, hdrId, btn){
+  const body=document.getElementById(bodyId);
+  if(!body)return;
+  const isOpen=body.style.display!=='none';
+  body.style.display=isOpen?'none':'';
+  btn.textContent=isOpen?'▼ แสดง':'▲ ซ่อน';
+  localStorage.setItem('sec_'+bodyId, isOpen?'1':'0');
+}
+
+function initCollapsibleCards(){
+  document.querySelectorAll('.card').forEach((card,idx)=>{
+    const hdr=card.querySelector(':scope > .card-h');
+    if(!hdr||hdr.querySelector('.card-tog'))return;
+
+    const body=document.createElement('div');
+    body.className='card-body';
+    const key='cc_'+idx+'_'+(hdr.textContent.trim().slice(0,12).replace(/[^a-zA-Z0-9ก-๙]/g,''));
+    body.dataset.ccKey=key;
+
+    [...card.children].filter(c=>c!==hdr).forEach(c=>body.appendChild(c));
+    card.appendChild(body);
+
+    const isCollapsed=localStorage.getItem(key)==='1';
+    if(isCollapsed){body.classList.add('collapsed');body.style.maxHeight='0';}
+
+    const tog=document.createElement('button');
+    tog.className='card-tog';
+    tog.textContent=isCollapsed?'▼':'▲';
+    tog.title='ซ่อน/แสดง';
+
+    tog.onclick=(e)=>{
+      e.stopPropagation();
+      const wasCollapsed=body.classList.contains('collapsed');
+      if(wasCollapsed){
+        body.classList.remove('collapsed');
+        body.style.maxHeight='';
+        tog.textContent='▲';
+        localStorage.setItem(key,'0');
+        setTimeout(()=>{
+          try{Object.values(Charts).forEach(c=>{if(c&&c.resize)c.resize();});}catch(e){}
+        },320);
+      }else{
+        body.classList.add('collapsed');
+        body.style.maxHeight='0';
+        tog.textContent='▼';
+        localStorage.setItem(key,'1');
+      }
+    };
+    hdr.onclick=(e)=>{if(e.target===tog||tog.contains(e.target))return;tog.click();};
+    hdr.appendChild(tog);
+  });
+
+  // Restore stats section state
+  const ssv=localStorage.getItem('sec_statsWrap');
+  if(ssv==='1'){
+    const w=document.getElementById('statsWrap');
+    const b=document.querySelector('#statsHdr .section-tog');
+    if(w&&b){w.style.display='none';b.textContent='▼ แสดง';}
+  }
+}
+
+setTimeout(initCollapsibleCards, 400);
 
 function buildBgThemePicker() {
   const grid = document.getElementById('btpGrid');
