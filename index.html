@@ -903,14 +903,14 @@ function showImportPreview(errors) {
       ${tx.currency}
     </button>`;
     const thbFmt = thb >= 1e6
-      ? `฿${(thb/1e6).toFixed(2)}M`
-      : `฿${Math.round(thb).toLocaleString('th-TH')}`;
+      ? `฿${(thb/1e6).toFixed(4)}M`
+      : `฿${thb.toLocaleString('th-TH',{maximumFractionDigits:4})}`;
     return `<tr style="border-top:1px solid var(--b2);${isBig?'background:rgba(248,113,113,.06)':''}">
       <td style="padding:6px 8px"><span class="${tx.type==='Buy'?'type-b':'type-s'}">${tx.type}</span></td>
       <td style="padding:6px 8px;font-weight:700;color:var(--gold)">${tx.ticker}</td>
       <td style="padding:6px 8px;font-family:var(--mono);color:var(--text2);font-size:.68rem">${tx.date}</td>
-      <td style="padding:6px 8px;font-family:var(--mono)">${tx.price.toLocaleString('en-US',{maximumFractionDigits:4})}</td>
-      <td style="padding:6px 8px;font-family:var(--mono)">${tx.shares.toLocaleString('en-US',{maximumFractionDigits:6})}</td>
+      <td style="padding:6px 8px;font-family:var(--mono)">${fmtPrecisePrice(tx.price)}</td>
+      <td style="padding:6px 8px;font-family:var(--mono)">${fmtShares(tx.shares)}</td>
       <td style="padding:6px 8px">${curBtn}</td>
       <td style="padding:6px 8px;font-family:var(--mono);font-weight:${isBig?'700':'400'};color:${isBig?'var(--red)':'var(--text2)'}">
         ${thbFmt}${isBig?` <span style="font-size:.6rem">⚠</span>`:''}
@@ -925,7 +925,7 @@ function showImportPreview(errors) {
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
       <div style="color:var(--green);font-size:.8rem;font-weight:600">✅ พบ ${importData.length} รายการ</div>
       <div style="font-size:.75rem;color:var(--text2)">มูลค่ารวม: <strong style="color:${grandTHB>10000000?'var(--red)':'var(--gold)'}">
-        ${grandTHB>=1e6?'฿'+(grandTHB/1e6).toFixed(2)+'M':'฿'+Math.round(grandTHB).toLocaleString('th-TH')}
+        ${grandTHB>=1e6?'฿'+(grandTHB/1e6).toFixed(4)+'M':'฿'+grandTHB.toLocaleString('th-TH',{maximumFractionDigits:4})}
       </strong></div>
     </div>
     ${errHtml}${suspectHtml}
@@ -1380,6 +1380,23 @@ function fmtK(thbV){
 function fmtAct(thbV){const v=dispCur==='USD'?thbV/rate:thbV;return Math.round(v).toLocaleString();}
 const pct=v=>(v>=0?'+':'')+v.toFixed(2)+'%';
 const fmtDate=d=>new Date(d+'T00:00:00').toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'});
+
+// ── ไม่ปัดเศษ: แสดงทศนิยมตามจริง ตัด trailing zeros ──
+function fmtShares(n){
+  if(n===0)return '0';
+  // ใช้ precision สูงสุดที่ JS เก็บได้ แล้วตัด trailing zeros
+  let s=n.toPrecision(12);
+  // แปลงจาก scientific notation ถ้ามี
+  if(s.includes('e')||s.includes('E'))s=n.toFixed(10);
+  // ตัด trailing zeros หลังจุดทศนิยม
+  return s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+}
+function fmtPrecisePrice(n){
+  if(n===0)return '0';
+  let s=n.toPrecision(10);
+  if(s.includes('e')||s.includes('E'))s=n.toFixed(8);
+  return s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+}
 
 function prTHB(tx){return tx.currency==='THB'?tx.price:tx.price*rate;}
 function prUSD(tx){return tx.currency==='USD'?tx.price:tx.price/rate;}
@@ -1907,7 +1924,7 @@ function renderHoldingsTable(){
   if(tot.issues&&tot.issues.length>0){
     issueEl.innerHTML=`<div class="issue-banner">
       ⚠️ <strong>ตรวจพบข้อมูลผิดปกติ:</strong>
-      ${tot.issues.map(a=>`<span class="issue-chip">${a.ticker} — ขายมากกว่าซื้อ (${a.buyS.toFixed(4)} vs ${a.sellS.toFixed(4)})</span>`).join('')}
+      ${tot.issues.map(a=>`<span class="issue-chip">${a.ticker} — ขายมากกว่าซื้อ (${fmtShares(a.buyS)} vs ${fmtShares(a.sellS)})</span>`).join('')}
       <span style="color:var(--muted);font-size:.65rem;margin-left:6px">กรุณาตรวจสอบและแก้ไขรายการ</span>
     </div>`;
     issueEl.style.display='block';
@@ -1956,11 +1973,11 @@ function renderHoldingsTable(){
           ${badge}
         </div>
       </td>
-      <td class="mono" style="color:var(--text2)">$${avgUSD.toFixed(avgUSD<1?6:2)}</td>
+      <td class="mono" style="color:var(--text2)">$${fmtPrecisePrice(avgUSD)}</td>
       <td class="${pc}" style="font-family:var(--mono)">${pct(unrPct)}</td>
       <td class="${gc}" style="font-family:var(--mono)">${a.unr>=0?'+':''}${fmtV(a.unr)}</td>
       <td class="mono" style="color:var(--text);font-weight:600">${fmtV(a.cVal)}</td>
-      <td class="mono" style="color:var(--text2)">${a.net.toFixed(a.net<1?6:4)}</td>
+      <td class="mono" style="color:var(--text2)">${fmtShares(a.net)}</td>
     </tr>`;
   });
 
@@ -1997,11 +2014,11 @@ function renderTxTable(){
       <td><span class="chip" style="color:var(--gold)">${tx.ticker}</span></td>
       <td style="color:var(--text2)">${fmtDate(tx.date)}</td>
       <td><div class="dual-price">
-        <div class="dual-primary">฿${Math.round(pTHB).toLocaleString('th-TH')}</div>
+        <div class="dual-primary">฿${pTHB.toLocaleString('th-TH',{maximumFractionDigits:6})}</div>
         ${isSuspect?`<div style="font-size:.6rem;color:var(--red)">⚠ ราคาสูงผิดปกติ</div>`:''}
       </div></td>
-      <td><div class="dual-price"><div class="dual-primary">$${pUSD.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:4})}</div><div class="dual-sec">${tx.currency} original</div></div></td>
-      <td style="font-family:var(--mono)">${tx.shares.toFixed(6)}</td>
+      <td><div class="dual-price"><div class="dual-primary">$${pUSD.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:8})}</div><div class="dual-sec">${tx.currency} original</div></div></td>
+      <td style="font-family:var(--mono)">${fmtShares(tx.shares)}</td>
       <td style="font-family:var(--mono)" class="${tx.type==='Buy'?'red':'green'}">${tx.type==='Buy'?'-':'+'}${fmtV(tot)}</td>
       <td style="font-family:var(--mono);color:var(--muted)">${tx.commission>0?fmtV(tx.commission*(tx.currency==='USD'?rate:1)):'—'}</td>
       <td style="color:var(--muted);font-size:.7rem;max-width:100px;overflow:hidden;text-overflow:ellipsis">${tx.note||''}</td>
