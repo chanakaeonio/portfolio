@@ -2,6 +2,12 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Portfolio">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#07090d">
+<meta name="application-name" content="Portfolio Tracker">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Portfolio Tracker — DCA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -389,6 +395,105 @@ body{display:flex;min-height:100vh;overflow-x:hidden}
 /* Tab panels */
 .tab-panel{display:none}
 .tab-panel.active{display:block}
+
+/* ══════════════════════════════════════════
+   MOBILE & PWA STYLES
+══════════════════════════════════════════ */
+/* Sidebar backdrop */
+#sbBackdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:499;backdrop-filter:blur(2px)}
+#sbBackdrop.on{display:block}
+
+/* Hamburger button (mobile only) */
+.sb-mob-btn{display:none;width:36px;height:36px;background:var(--s2);border:1px solid var(--border);
+  border-radius:8px;cursor:pointer;align-items:center;justify-content:center;
+  color:var(--text2);flex-shrink:0;transition:all .2s}
+.sb-mob-btn:hover{border-color:var(--gold);color:var(--gold)}
+
+/* Bottom nav */
+#bottomNav{display:none;position:fixed;bottom:0;left:0;right:0;
+  background:var(--card-bg,var(--s1));border-top:1px solid var(--border);
+  z-index:450;padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px));
+  box-shadow:0 -4px 20px rgba(0,0,0,.3)}
+.bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  background:none;border:none;cursor:pointer;padding:5px 2px;
+  color:var(--muted);font-family:var(--fn);font-size:.52rem;transition:color .15s;min-width:0}
+.bnav-btn.active{color:var(--gold)}
+.bnav-btn .bni{font-size:1.05rem;line-height:1}
+.bnav-btn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:56px;display:block}
+
+/* Install banner */
+#pwaInstall{display:none;align-items:center;gap:10px;padding:10px 14px;
+  background:rgba(232,184,109,.08);border:1px solid rgba(232,184,109,.2);
+  border-radius:10px;margin-bottom:12px}
+#pwaInstall p{flex:1;font-size:.75rem;color:var(--text2)}
+
+@media(max-width:768px){
+  /* Sidebar → overlay drawer */
+  .sidebar{
+    transform:translateX(-100%);
+    width:240px!important;
+    z-index:600;
+    transition:transform .28s cubic-bezier(.4,0,.2,1);
+    box-shadow:none;
+  }
+  .sidebar.collapsed{transform:translateX(-100%);width:240px!important}
+  .sidebar.mobile-open{transform:translateX(0)!important;box-shadow:8px 0 40px rgba(0,0,0,.5)}
+  .sidebar.mobile-open .sb-lbl{opacity:1!important;max-width:200px!important}
+  .sidebar.mobile-open .sb-logo{opacity:1!important;width:auto!important;flex:1!important}
+  .sidebar.mobile-open .sb-user-name{opacity:1!important;max-width:120px!important}
+
+  /* Content takes full width */
+  .wrap{margin-left:0!important;padding:12px 10px 84px!important}
+
+  /* portBar horizontal scroll */
+  #portBar{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  #portBar::-webkit-scrollbar{display:none}
+  #portTabs{flex-wrap:nowrap}
+
+  /* Header stacks nicely */
+  header{flex-direction:column;align-items:stretch;gap:8px}
+  .brand{display:flex;align-items:center;justify-content:space-between}
+  .hdr-r{overflow-x:auto;flex-wrap:nowrap;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .hdr-r::-webkit-scrollbar{display:none}
+
+  /* Show hamburger */
+  .sb-mob-btn{display:flex}
+
+  /* Show bottom nav */
+  #bottomNav{display:flex}
+
+  /* Single column cards */
+  .row2,.row3,.row4{grid-template-columns:1fr!important}
+
+  /* Tables */
+  .tx-w{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .gg-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+  /* Theme bar scroll */
+  .theme-bar{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .theme-bar::-webkit-scrollbar{display:none}
+
+  /* Bigger touch targets */
+  .btn{min-height:36px;padding:7px 14px}
+  .ic,.ic.del{width:32px;height:32px;font-size:.85rem}
+  .tog-btn{padding:7px 12px}
+  .sb-tab{padding:9px 6px}
+
+  /* Modal full screen */
+  .modal{max-height:92vh;margin:16px}
+  .ov .modal{width:96%!important;max-width:100%!important}
+
+  /* Port tabs on mobile */
+  .port-tab{padding:7px 10px;font-size:.7rem}
+  .port-tab-name{max-width:80px}
+}
+
+@media(max-width:420px){
+  .wrap{padding:10px 8px 84px!important}
+  .card{padding:14px 12px}
+  .brand h1{font-size:1.25rem}
+}
+
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -465,18 +570,29 @@ body{display:flex;min-height:100vh;overflow-x:hidden}
   <button id="portAddBtn" onclick="createPort()">＋ พอร์ตใหม่</button>
 </div>
 
+<div id="pwaInstall">
+  <p>📱 ติดตั้งเป็นแอปบนมือถือได้เลย — เร็วกว่าเปิดเบราว์เซอร์</p>
+  <button class="btn btn-gold" id="pwaInstallBtn" style="font-size:.72rem;padding:6px 14px">ติดตั้ง</button>
+  <button class="btn btn-ghost" onclick="document.getElementById('pwaInstall').style.display='none'" style="font-size:.7rem;padding:6px 10px">✕</button>
+</div>
+
 <div id="tab-overview" class="tab-panel active">
-<div class="theme-bar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-  <span style="font-size:0.62rem;color:var(--muted);font-weight:600;text-transform:uppercase;white-space:nowrap">🎨 Accent:</span>
-  <div id="themeBtns" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
-  <div class="paired-sep"></div>
-  <span style="font-size:0.62rem;color:var(--muted);font-weight:600;text-transform:uppercase;white-space:nowrap">🎭 คู่สี:</span>
-  <div id="pairedBtns" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
-  <div style="margin-left:auto">
+<!-- ธีมซ่อนอยู่ใน panel — กดปุ่ม 🎨 ในหัวหน้าเพื่อเปิด -->
+<div id="themePanel" style="display:none;background:var(--card-bg,var(--s1));border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;flex-direction:column;gap:10px">
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <span style="font-size:0.62rem;color:var(--muted);font-weight:600;text-transform:uppercase;white-space:nowrap">🎨 Accent:</span>
+    <div id="themeBtns" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <span style="font-size:0.62rem;color:var(--muted);font-weight:600;text-transform:uppercase;white-space:nowrap">🎭 คู่สี:</span>
+    <div id="pairedBtns" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <span style="font-size:0.62rem;color:var(--muted);font-weight:600;text-transform:uppercase;white-space:nowrap">🖼 พื้นหลัง:</span>
     <div class="bg-theme-wrap">
       <button class="bg-theme-btn" id="bgThemeBtn" onclick="toggleBgPanel(event)">
         <div id="bgDot" style="width:12px;height:12px;border-radius:3px;background:#07090d;border:1px solid rgba(255,255,255,.3);flex-shrink:0"></div>
-        พื้นหลัง
+        เลือกพื้นหลัง
       </button>
       <div class="bg-theme-panel" id="bgThemePanel">
         <div class="btp-title">เลือกโทนสีพื้นหลัง</div>
@@ -487,7 +603,15 @@ body{display:flex;min-height:100vh;overflow-x:hidden}
 </div>
 
 <header>
-  <div class="brand"><h1>◈ Portfolio Tracker</h1><p>DCA Investment Dashboard</p></div>
+  <div class="brand">
+    <button class="sb-mob-btn" onclick="toggleMobileSidebar()" title="เมนู">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+    <div>
+      <h1>◈ Portfolio Tracker</h1>
+      <p>DCA Investment Dashboard</p>
+    </div>
+  </div>
   <div class="hdr-r">
     <div class="pill" style="gap:6px"><label>USD/THB</label><input type="number" id="rateI" value="33" step=".1" onchange="onRate()"><span id="rateStatus" title="คลิกเพื่อรีเฟรชอัตราแลกเปลี่ยน" style="font-size:.58rem;font-family:var(--mono);padding:1px 5px;border-radius:3px;background:rgba(255,255,255,.06);color:var(--muted);cursor:pointer;white-space:nowrap" onclick="fetchRate(true)">—</span></div>
     <div class="pill"><label>💵 เงินสด</label><input class="cash" type="number" id="cashI" value="0" step="100" placeholder="0" onchange="onCashChange(this)"></div>
@@ -500,6 +624,7 @@ body{display:flex;min-height:100vh;overflow-x:hidden}
     <span class="cloud-status" id="cloudStatus" style="display:none">☁</span>
     <button class="btn btn-ghost" onclick="exportCSV()">⬇ CSV</button>
     <button class="btn btn-ghost" onclick="openDataDoctor()" title="ตรวจสอบและซ่อมข้อมูล">🩺 ตรวจข้อมูล</button>
+    <button class="btn btn-ghost" onclick="toggleThemePanel()" title="ตั้งค่าธีม" id="themePanelBtn" style="font-size:.8rem;padding:6px 10px">🎨</button>
     <button class="btn btn-gold"  onclick="openAdd()">+ เพิ่มรายการ</button>
     <label class="btn btn-ghost" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px" title="นำเข้าไฟล์ Excel / CSV">
       📥 นำเข้า Excel
@@ -1857,6 +1982,25 @@ function deletePort(id,e){
   else renderPortBar();
 }
 
+function toggleThemePanel(){
+  const p=document.getElementById('themePanel');
+  const btn=document.getElementById('themePanelBtn');
+  const open=p.style.display==='flex';
+  p.style.display=open?'none':'flex';
+  btn.style.background=open?'':'rgba(232,184,109,.15)';
+  btn.style.borderColor=open?'':'var(--gold)';
+  btn.style.color=open?'':'var(--gold)';
+}
+// ปิด theme panel เมื่อคลิกข้างนอก
+document.addEventListener('click',e=>{
+  const p=document.getElementById('themePanel');
+  const btn=document.getElementById('themePanelBtn');
+  if(p&&p.style.display==='flex'&&!p.contains(e.target)&&e.target!==btn&&!btn?.contains(e.target)){
+    p.style.display='none';
+    if(btn){btn.style.background='';btn.style.borderColor='';btn.style.color='';}
+  }
+});
+
 function renderAll(){
   const run=(fn)=>{try{fn();}catch(e){console.warn('[renderAll]',fn.name,e);}};
   run(renderTicker);
@@ -3027,7 +3171,7 @@ const BG_THEMES = [
   {id:'white-black',   label:'ขาว+ดำ',    hex:'#ffffff'},
 ];
 const LIGHT_BG_IDS = ['pure-white','warm-white','pink','lavender','soft-purple','mint','bright-mint','yellow','bright-yellow','cream','light-blue','orange','white-black'];
-let curBgTheme = localStorage.getItem('gtBgTheme') || 'dark-black';
+let curBgTheme = localStorage.getItem('gtBgTheme') || 'mint';
 
 /* ═══════════════════════════════════════════
    INIT
@@ -3588,6 +3732,88 @@ function setCloudStatus(type,msg){
 // เริ่ม Firebase
 initFirebase();
 
+
+/* ══════════════════════════════════════════
+   MOBILE & PWA FUNCTIONS
+══════════════════════════════════════════ */
+function toggleMobileSidebar(){
+  const sb=document.getElementById('sidebar');
+  const bd=document.getElementById('sbBackdrop');
+  if(sb.classList.contains('mobile-open')){
+    sb.classList.remove('mobile-open');
+    bd.classList.remove('on');
+  }else{
+    sb.classList.remove('collapsed');
+    sb.classList.add('mobile-open');
+    bd.classList.add('on');
+  }
+}
+function closeMobileSidebar(){
+  document.getElementById('sidebar').classList.remove('mobile-open');
+  document.getElementById('sbBackdrop').classList.remove('on');
+}
+const _origShowTab=showTab;
+showTab=function(id){
+  _origShowTab(id);
+  if(window.innerWidth<=768) closeMobileSidebar();
+  updateBottomNav(id);
+};
+function updateBottomNav(activeId){
+  document.querySelectorAll('.bnav-btn[data-tab]').forEach(b=>{
+    b.classList.toggle('active',b.dataset.tab===activeId);
+  });
+}
+updateBottomNav(localStorage.getItem('pTab_v1')||'overview');
+(function initPWA(){
+  const iconSvg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="90" fill="#07090d"/><text x="256" y="360" font-size="320" text-anchor="middle" fill="#e8b86d" font-family="serif">&#9672;</text></svg>`;
+  const iconUrl='data:image/svg+xml,'+encodeURIComponent(iconSvg);
+  const al=document.createElement('link');al.rel='apple-touch-icon';al.href=iconUrl;
+  document.head.appendChild(al);
+  try{
+    const m={name:'Portfolio Tracker',short_name:'Portfolio',
+      start_url:location.href.split('?')[0],display:'standalone',
+      orientation:'portrait-primary',theme_color:'#07090d',background_color:'#07090d',
+      icons:[{src:iconUrl,sizes:'512x512',type:'image/svg+xml',purpose:'any maskable'}]};
+    const b=new Blob([JSON.stringify(m)],{type:'application/manifest+json'});
+    const ml=document.createElement('link');ml.rel='manifest';ml.href=URL.createObjectURL(b);
+    document.head.appendChild(ml);
+  }catch(e){}
+})();
+let _pwaPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();_pwaPrompt=e;
+  const pi=document.getElementById('pwaInstall');if(pi)pi.style.display='flex';
+});
+document.getElementById('pwaInstallBtn')?.addEventListener('click',async()=>{
+  if(!_pwaPrompt)return;
+  _pwaPrompt.prompt();await _pwaPrompt.userChoice;
+  const pi=document.getElementById('pwaInstall');if(pi)pi.style.display='none';
+  _pwaPrompt=null;
+});
+window.addEventListener('appinstalled',()=>{
+  const pi=document.getElementById('pwaInstall');if(pi)pi.style.display='none';
+});
+window.addEventListener('resize',()=>{if(window.innerWidth>768)closeMobileSidebar();});
+
 </script>
+<!-- BOTTOM NAV (mobile) -->
+<nav id="bottomNav">
+  <button class="bnav-btn" data-tab="overview" onclick="showTab('overview');updateBottomNav('overview')">
+    <i class="bni fa-solid fa-house"></i><span>ภาพรวม</span>
+  </button>
+  <button class="bnav-btn" data-tab="history" onclick="showTab('history');updateBottomNav('history')">
+    <i class="bni fa-solid fa-list"></i><span>รายการ</span>
+  </button>
+  <button class="bnav-btn" id="bnavAdd" onclick="openAdd()" style="color:var(--gold)">
+    <i class="bni fa-solid fa-circle-plus" style="font-size:1.5rem;margin:-2px 0"></i><span>เพิ่ม</span>
+  </button>
+  <button class="bnav-btn" data-tab="goal" onclick="showTab('goal');updateBottomNav('goal')">
+    <i class="bni fa-solid fa-bullseye"></i><span>เป้าหมาย</span>
+  </button>
+  <button class="bnav-btn" data-tab="global" onclick="showTab('global');updateBottomNav('global')">
+    <i class="bni fa-solid fa-globe"></i><span>ตลาด</span>
+  </button>
+</nav>
+
 </body>
 </html>
