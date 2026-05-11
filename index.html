@@ -31,6 +31,23 @@ body{font-family:var(--fn);background:var(--bg,#07090d);color:var(--text);min-he
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:#252933;border-radius:3px}
 
+
+/* ─── PORTFOLIO BAR ─── */
+#portBar{display:flex;align-items:center;gap:6px;padding:10px 18px 0;flex-wrap:wrap;background:var(--card-bg,var(--s1));border-bottom:1px solid var(--border);position:sticky;top:0;z-index:200}
+#portTabs{display:flex;gap:3px;flex-wrap:wrap}
+.port-tab{display:flex;align-items:center;gap:7px;padding:7px 13px;border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;cursor:pointer;font-size:.74rem;font-weight:500;color:var(--text2);background:var(--s2);transition:all .18s;white-space:nowrap;max-width:180px}
+.port-tab:hover{color:var(--text);background:var(--s1)}
+.port-tab.active{background:var(--bg,#07090d);color:var(--gold);font-weight:700;border-color:rgba(232,184,109,.5);border-bottom:1px solid var(--bg,#07090d);position:relative;top:1px}
+.port-tab-name{overflow:hidden;text-overflow:ellipsis;max-width:120px}
+.port-tab-acts{display:flex;gap:1px;opacity:0;transition:opacity .15s}
+.port-tab:hover .port-tab-acts,.port-tab.active .port-tab-acts{opacity:1}
+.port-tab-acts button{background:none;border:none;cursor:pointer;font-size:.62rem;color:var(--muted);padding:2px 4px;border-radius:3px;line-height:1;transition:all .14s}
+.port-tab-acts button:hover{background:rgba(255,255,255,.1);color:var(--text)}
+.port-tab-acts button.del-p:hover{background:rgba(248,113,113,.15);color:var(--red)}
+#portAddBtn{display:flex;align-items:center;gap:5px;background:transparent;border:1px dashed var(--border);border-radius:8px 8px 0 0;padding:7px 13px;cursor:pointer;font-size:.72rem;color:var(--muted);font-family:var(--fn);transition:all .18s;white-space:nowrap}
+#portAddBtn:hover{border-color:var(--gold);color:var(--gold)}
+.port-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-right:2px}
+
 /* ─── LAYOUT ─── */
 .wrap{max-width:1560px;margin:0 auto;padding:18px 16px 80px}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
@@ -404,6 +421,11 @@ body{display:flex;min-height:100vh;overflow-x:hidden}
   </div>
 </nav>
 <div class="wrap">
+
+<div id="portBar">
+  <div id="portTabs"></div>
+  <button id="portAddBtn" onclick="createPort()">＋ พอร์ตใหม่</button>
+</div>
 
 <div id="tab-overview" class="tab-panel active">
 <div class="theme-bar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -1070,7 +1092,7 @@ function clearAllData(){
   if(!confirm('⚠️ ล้างข้อมูลทั้งหมด\n\nTransaction และราคาทั้งหมดจะถูกลบ\nไม่สามารถกู้คืนได้'))return;
   if(!confirm('ยืนยันอีกครั้ง — ล้างข้อมูลจริงหรือไม่?'))return;
   txs=[]; prices={...DEF_P}; actuals={};
-  ['pTXv5','pPXv5','pACv5'].forEach(k=>localStorage.removeItem(k));
+  ['pTXv5','pPXv5','pACv5'].forEach(k=>localStorage.removeItem(portKey(k)));
   renderAll(); closeModal('ddMod'); alert('✅ ล้างข้อมูลเรียบร้อย');
 }
 </script>
@@ -1361,20 +1383,39 @@ const SEED=[];
    STATE
 ═══════════════════════════════════════════ */
 // v7: เปลี่ยน crypto เป็น USD (สากล) — ล้างราคาเก่าที่เป็น THB ออก
+/* ═══════════════════════════════════════════
+   MULTI-PORTFOLIO STATE
+═══════════════════════════════════════════ */
+const PORT_COLORS=['#e8b86d','#34d399','#60a5fa','#f87171'];
+let portfolios = JSON.parse(localStorage.getItem('pPORTS')||'null') || [{id:0,name:'พอร์ตหลัก'}];
+let currentPortId = parseInt(localStorage.getItem('pCURPORT')||'0');
+if(!portfolios.find(p=>p.id===currentPortId)) currentPortId=portfolios[0].id;
+
+// portKey: สร้าง key ที่ผูกกับพอร์ตปัจจุบัน
+const portKey = k=>`${k}_p${currentPortId}`;
+
+// Migrate ข้อมูลเก่า (ไม่มี suffix) → พอร์ต 0
+if(localStorage.getItem('pTXv5')!==null && localStorage.getItem('pTXv5_p0')===null){
+  ['pTXv5','pPXv5','pACv5','pGOALv5','pCASHv5'].forEach(k=>{
+    const v=localStorage.getItem(k);
+    if(v!==null){localStorage.setItem(k+'_p0',v);localStorage.removeItem(k);}
+  });
+}
+
 if(!localStorage.getItem('pCLEARED_v7')){
-  localStorage.removeItem('pTXv5');
-  localStorage.removeItem('pPXv5');
-  localStorage.removeItem('pACv5');
+  localStorage.removeItem('pTXv5_p0');
+  localStorage.removeItem('pPXv5_p0');
+  localStorage.removeItem('pACv5_p0');
   localStorage.removeItem('pRTv5');
   localStorage.setItem('pCLEARED_v7','1');
 }
-let txs     = JSON.parse(localStorage.getItem('pTXv5') ||'null')     || SEED;
-let prices  = JSON.parse(localStorage.getItem('pPXv5') ||'null')     || {...DEF_P};
-let actuals = JSON.parse(localStorage.getItem('pACv5') ||'{}');
-let rate    = parseFloat(localStorage.getItem('pRTv5') ||'33');
+let txs     = JSON.parse(localStorage.getItem(portKey('pTXv5'))||'null') || SEED;
+let prices  = JSON.parse(localStorage.getItem(portKey('pPXv5'))||'null') || {...DEF_P};
+let actuals = JSON.parse(localStorage.getItem(portKey('pACv5'))||'{}');
+let rate    = parseFloat(localStorage.getItem('pRTv5')||'33');
 let dispCur = localStorage.getItem('pCRv5') || 'THB';
-// ── Goal Tracker state — โหลดจาก localStorage ทันที (เหมือน rate) ──
-const _gRaw = JSON.parse(localStorage.getItem('pGOALv5')||'null');
+// ── Goal Tracker state ──
+const _gRaw = JSON.parse(localStorage.getItem(portKey('pGOALv5'))||'null');
 let gVal = {
   gI:  _gRaw?.gI  ?? 2000,
   gM:  _gRaw?.gM  ?? 2000,
@@ -1389,19 +1430,18 @@ let psStart = 100; // fraction 0-100 for nav slider
 let Charts  = {}; // all chart instances
 
 const save=()=>{
-  localStorage.setItem('pTXv5',JSON.stringify(txs));
-  localStorage.setItem('pPXv5',JSON.stringify(prices));
-  localStorage.setItem('pACv5',JSON.stringify(actuals));
+  localStorage.setItem(portKey('pTXv5'),JSON.stringify(txs));
+  localStorage.setItem(portKey('pPXv5'),JSON.stringify(prices));
+  localStorage.setItem(portKey('pACv5'),JSON.stringify(actuals));
   localStorage.setItem('pRTv5',String(rate));
   localStorage.setItem('pCRv5',dispCur);
-  localStorage.setItem('pGOALv5',JSON.stringify(gVal));
-  // บันทึกยอดเงินสด
+  localStorage.setItem(portKey('pGOALv5'),JSON.stringify(gVal));
   const cashEl=document.getElementById('cashI');
-  if(cashEl) localStorage.setItem('pCASHv5', cashEl.value||'0');
+  if(cashEl) localStorage.setItem(portKey('pCASHv5'), cashEl.value||'0');
 };
 
 function onCashChange(inp){
-  localStorage.setItem('pCASHv5', inp.value||'0');
+  localStorage.setItem(portKey('pCASHv5'), inp.value||'0');
   renderStats();
 }
 
@@ -1470,7 +1510,7 @@ function saveGoal(){
     const el=document.getElementById(id);
     if(el && el.value!=='') gVal[id] = el.value;
   });
-  localStorage.setItem('pGOALv5', JSON.stringify(gVal));
+  localStorage.setItem(portKey('pGOALv5'), JSON.stringify(gVal));
 }
 
 /* ═══════════════════════════════════════════
@@ -1695,6 +1735,88 @@ function getPxBadge(ticker){
 /* ═══════════════════════════════════════════
    RENDER
 ═══════════════════════════════════════════ */
+/* ═══════════════════════════════════════════
+   MULTI-PORTFOLIO FUNCTIONS
+═══════════════════════════════════════════ */
+function renderPortBar(){
+  const tabs=document.getElementById('portTabs');
+  const addBtn=document.getElementById('portAddBtn');
+  if(!tabs) return;
+  tabs.innerHTML=portfolios.map((p,i)=>`
+    <div class="port-tab ${p.id===currentPortId?'active':''}" onclick="switchPort(${p.id})" title="${p.name}">
+      <span class="port-dot" style="background:${PORT_COLORS[i%4]}"></span>
+      <span class="port-tab-name">${p.name}</span>
+      <span class="port-tab-acts">
+        <button onclick="renamePort(${p.id},event)" title="เปลี่ยนชื่อ">✏</button>
+        ${portfolios.length>1?`<button class="del-p" onclick="deletePort(${p.id},event)" title="ลบพอร์ต">✕</button>`:''}
+      </span>
+    </div>`).join('');
+  if(addBtn) addBtn.style.display=portfolios.length>=4?'none':'';
+}
+
+function switchPort(id){
+  if(id===currentPortId) return;
+  save();
+  currentPortId=id;
+  localStorage.setItem('pCURPORT',String(id));
+  txs    =JSON.parse(localStorage.getItem(portKey('pTXv5'))||'null')||[...SEED];
+  prices =JSON.parse(localStorage.getItem(portKey('pPXv5'))||'null')||{...DEF_P};
+  actuals=JSON.parse(localStorage.getItem(portKey('pACv5'))||'{}');
+  const gRaw=JSON.parse(localStorage.getItem(portKey('pGOALv5'))||'null');
+  gVal={gI:gRaw?.gI??2000,gM:gRaw?.gM??2000,gR:gRaw?.gR??10,
+        gYr:gRaw?.gYr??20,gSY:gRaw?.gSY??2026,gSM:gRaw?.gSM??1};
+  const setEl=(id2,v)=>{const e=document.getElementById(id2);if(e)e.value=v;};
+  setEl('gI',gVal.gI);setEl('gI_s',gVal.gI);
+  setEl('gM',gVal.gM);setEl('gM_s',gVal.gM);
+  setEl('gR',gVal.gR);setEl('gR_s',gVal.gR);
+  setEl('gYr',gVal.gYr);setEl('gYr_s',gVal.gYr);
+  setEl('gSY',gVal.gSY);setEl('gSM',gVal.gSM);
+  const cashEl=document.getElementById('cashI');
+  if(cashEl) cashEl.value=localStorage.getItem(portKey('pCASHv5'))||'0';
+  selectedIds.clear(); txSearchQ='';
+  const searchEl=document.getElementById('txSearch'); if(searchEl) searchEl.value='';
+  pxSrc={}; pxTime={};
+  stopStockRealtime(); selTicker=null; stockZoom='1y';
+  Object.keys(stockHistCache).forEach(k=>delete stockHistCache[k]);
+  renderPortBar();
+  renderAll();
+  setTimeout(fetchAllPrices,800);
+}
+
+function createPort(){
+  if(portfolios.length>=4){alert('สร้างได้สูงสุด 4 พอร์ตเท่านั้น');return;}
+  const name=prompt('ตั้งชื่อพอร์ตใหม่:',`พอร์ต ${portfolios.length+1}`);
+  if(!name||!name.trim()) return;
+  const usedIds=new Set(portfolios.map(p=>p.id));
+  let newId=0; while(usedIds.has(newId)) newId++;
+  portfolios.push({id:newId,name:name.trim()});
+  localStorage.setItem('pPORTS',JSON.stringify(portfolios));
+  save();
+  switchPort(newId);
+}
+
+function renamePort(id,e){
+  e&&e.stopPropagation();
+  const port=portfolios.find(p=>p.id===id); if(!port) return;
+  const name=prompt('เปลี่ยนชื่อพอร์ต:',port.name);
+  if(!name||!name.trim()) return;
+  port.name=name.trim();
+  localStorage.setItem('pPORTS',JSON.stringify(portfolios));
+  renderPortBar();
+}
+
+function deletePort(id,e){
+  e&&e.stopPropagation();
+  if(portfolios.length<=1){alert('ต้องมีอย่างน้อย 1 พอร์ต');return;}
+  const port=portfolios.find(p=>p.id===id);
+  if(!confirm(`ลบพอร์ต "${port?.name}" และข้อมูลทั้งหมดในพอร์ตนี้?`)) return;
+  ['pTXv5','pPXv5','pACv5','pGOALv5','pCASHv5'].forEach(k=>localStorage.removeItem(`${k}_p${id}`));
+  portfolios=portfolios.filter(p=>p.id!==id);
+  localStorage.setItem('pPORTS',JSON.stringify(portfolios));
+  if(currentPortId===id) switchPort(portfolios[0].id);
+  else renderPortBar();
+}
+
 function renderAll(){
   const run=(fn)=>{try{fn();}catch(e){console.warn('[renderAll]',fn.name,e);}};
   run(renderTicker);
@@ -2264,7 +2386,7 @@ function saveAct(inp){
   const raw=inp.value.replace(/,/g,'');const n=parseFloat(raw);
   if(!isNaN(n)&&n>0){actuals[key]=dispCur==='USD'?n*rate:n;inp.value=Math.round(n).toLocaleString();}
   else{delete actuals[key];inp.value='';}
-  liveClr(inp);localStorage.setItem('pACv5',JSON.stringify(actuals));
+  liveClr(inp);localStorage.setItem(portKey('pACv5'),JSON.stringify(actuals));
 }
 function liveClr(inp){
   const targ=parseFloat(inp.dataset.t)||0;
@@ -2873,7 +2995,7 @@ let curBgTheme = localStorage.getItem('gtBgTheme') || 'dark-black';
 initThemes();
 document.getElementById('rateI').value=rate;
 // Restore ยอดเงินสดจาก localStorage
-const _savedCash = localStorage.getItem('pCASHv5');
+const _savedCash = localStorage.getItem(portKey('pCASHv5'));
 if(_savedCash !== null) document.getElementById('cashI').value = _savedCash;
 // Restore Goal Tracker — gVal โหลดจาก localStorage แล้วตั้งแต่ต้น ใส่ค่าลง DOM เลย
 (function restoreGoalDOM(){
@@ -2903,6 +3025,7 @@ if(localStorage.getItem('pSb_v1')==='1') document.getElementById('sidebar').clas
 const _lastTab=localStorage.getItem('pTab_v1')||'all';
 showTab(_lastTab);
 
+renderPortBar();
 renderAll();
 setTimeout(()=>{
   const w=document.getElementById('txTableWrap');
