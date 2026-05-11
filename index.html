@@ -1874,28 +1874,75 @@ function renderPeriods(){
 }
 
 function buildMainData(pd){
-  const now=new Date();let cut=null;
-  if(pd==='1w'){cut=new Date(now);cut.setDate(now.getDate()-7);}
-  else if(pd==='1m'){cut=new Date(now);cut.setMonth(now.getMonth()-1);}
-  else if(pd==='3m'){cut=new Date(now);cut.setMonth(now.getMonth()-3);}
-  else if(pd==='6m'){cut=new Date(now);cut.setMonth(now.getMonth()-6);}
-  else if(pd==='ytd'){cut=new Date(now.getFullYear(),0,1);}
-  else if(pd==='1y'){cut=new Date(now);cut.setFullYear(now.getFullYear()-1);}
-  let sorted=[...txs].sort((a,b)=>a.date.localeCompare(b.date));
-  if(cut)sorted=sorted.filter(t=>new Date(t.date+'T00:00:00')>=cut);
-  if(!sorted.length)return null;
+  if(!txs.length) return null;
+  const now=new Date(); now.setHours(23,59,59);
+  let cutDate=null;
+  if(pd==='1w'){cutDate=new Date();cutDate.setDate(cutDate.getDate()-7);}
+  else if(pd==='1m'){cutDate=new Date();cutDate.setMonth(cutDate.getMonth()-1);}
+  else if(pd==='3m'){cutDate=new Date();cutDate.setMonth(cutDate.getMonth()-3);}
+  else if(pd==='6m'){cutDate=new Date();cutDate.setMonth(cutDate.getMonth()-6);}
+  else if(pd==='ytd'){cutDate=new Date(now.getFullYear(),0,1);}
+  else if(pd==='1y'){cutDate=new Date();cutDate.setFullYear(cutDate.getFullYear()-1);}
+
+  const allSorted=[...txs].sort((a,b)=>a.date.localeCompare(b.date));
+  const firstTxDate=new Date(allSorted[0].date+'T00:00:00');
+  const chartStart=cutDate?new Date(Math.max(cutDate.getTime(),firstTxDate.getTime())):new Date(firstTxDate);
+  const chartStartStr=chartStart.toISOString().slice(0,10);
+
+  // Build cumulative position state from all txs before chartStart
   const snap={};let cumC=0;
-  const base=getSP(sorted[0].date);
-  const lbs=[],inv=[],pv=[],sp=[];
-  sorted.forEach(tx=>{
-    snap[tx.ticker]=(snap[tx.ticker]||0)+(tx.type==='Buy'?tx.shares:-tx.shares);
-    const tot=txTotTHB(tx);
-    cumC+=tx.type==='Buy'?tot:-tot;
-    let cv=0;Object.entries(snap).forEach(([t,s])=>{cv+=Math.max(0,s)*curPTHB(t);});
-    lbs.push(fmtDate(tx.date));
-    inv.push(+cumC.toFixed(0));pv.push(+cv.toFixed(0));
-    sp.push(+(base>0?(getSP(tx.date)/base)*cumC:cumC).toFixed(0));
+  allSorted.forEach(tx=>{
+    const txDate=new Date(tx.date+'T00:00:00');
+    if(txDate<chartStart){
+      snap[tx.ticker]=(snap[tx.ticker]||0)+(tx.type==='Buy'?tx.shares:-tx.shares);
+      cumC+=tx.type==='Buy'?txTotTHB(tx):-txTotTHB(tx);
+    }
   });
+
+  // Transactions within the visible window
+  const winTxs=allSorted.filter(tx=>new Date(tx.date+'T00:00:00')>=chartStart);
+
+  // Step size in days based on period
+  const stepDays=pd==='1w'?1:pd==='1m'?2:pd==='3m'?3:pd==='6m'?7:14;
+
+  const lbs=[],inv=[],pv=[],sp=[];
+  const spBase=getSP(chartStartStr)||5280;
+  let txIdx=0;
+
+  let d=new Date(chartStart);
+  while(d<=now){
+    const dk=d.toISOString().slice(0,10);
+    // Apply transactions on or before this date
+    while(txIdx<winTxs.length&&winTxs[txIdx].date<=dk){
+      const tx=winTxs[txIdx];
+      snap[tx.ticker]=(snap[tx.ticker]||0)+(tx.type==='Buy'?tx.shares:-tx.shares);
+      cumC+=tx.type==='Buy'?txTotTHB(tx):-txTotTHB(tx);
+      txIdx++;
+    }
+    let cv=0;Object.entries(snap).forEach(([t,s])=>{cv+=Math.max(0,s)*curPTHB(t);});
+    lbs.push(fmtDate(dk));
+    inv.push(+cumC.toFixed(0));
+    pv.push(+cv.toFixed(0));
+    sp.push(+(spBase>0?(getSP(dk)/spBase)*Math.max(cumC,1):0).toFixed(0));
+    d.setDate(d.getDate()+stepDays);
+  }
+  // Always include today as the last point
+  const todayStr=new Date().toISOString().slice(0,10);
+  const todayLbl=fmtDate(todayStr);
+  if(!lbs.length||lbs[lbs.length-1]!==todayLbl){
+    while(txIdx<winTxs.length){
+      const tx=winTxs[txIdx];
+      snap[tx.ticker]=(snap[tx.ticker]||0)+(tx.type==='Buy'?tx.shares:-tx.shares);
+      cumC+=tx.type==='Buy'?txTotTHB(tx):-txTotTHB(tx);
+      txIdx++;
+    }
+    let cv=0;Object.entries(snap).forEach(([t,s])=>{cv+=Math.max(0,s)*curPTHB(t);});
+    lbs.push(todayLbl);
+    inv.push(+cumC.toFixed(0));
+    pv.push(+cv.toFixed(0));
+    sp.push(+(spBase>0?(getSP(todayStr)/spBase)*Math.max(cumC,1):0).toFixed(0));
+  }
+  if(!lbs.length) return null;
   return{lbs,inv,pv,sp};
 }
 
@@ -2034,10 +2081,15 @@ function onPrCh(inp){
 function renderTxTable(){
   const sorted=[...txs].sort((a,b)=>b.date.localeCompare(a.date));
   document.getElementById('txCount').textContent=sorted.length+' รายการ';
-  if(!sorted.length){document.getElementById('txBody').innerHTML=`<tr><td colspan="10" style="text-align:center;padding:36px;color:var(--muted)">ยังไม่มีรายการ</td></tr>`;return;}
+  if(!sorted.length){document.getElementById('txBody').innerHTML=`<tr><td colspan="10" style="text-align:center;padding:36px;color:var(--muted)">ยังไม่มีรายการ — กดปุ่ม "+ เพิ่มรายการ" เพื่อเริ่มต้น</td></tr>`;
+    // Reset txTableWrap height
+    const w=document.getElementById('txTableWrap');
+    if(w&&txOpen) w.style.maxHeight=w.scrollHeight+'px';
+    return;
+  }
   document.getElementById('txBody').innerHTML=sorted.map(tx=>{
     const pTHB=prTHB(tx),pUSD=prUSD(tx),tot=pTHB*tx.shares;
-    const isSuspect=pTHB>1000000; // >1M THB per unit is suspicious
+    const isSuspect=pTHB>1000000;
     return `<tr style="${isSuspect?'background:rgba(248,113,113,.05);border-left:2px solid rgba(248,113,113,.4)':''}">
       <td><span class="type-${tx.type==='Buy'?'b':'s'}">${tx.type==='Buy'?'ซื้อ':'ขาย'}</span></td>
       <td><span class="chip" style="color:var(--gold)">${tx.ticker}</span></td>
@@ -2051,12 +2103,17 @@ function renderTxTable(){
       <td style="font-family:var(--mono)" class="${tx.type==='Buy'?'red':'green'}">${tx.type==='Buy'?'-':'+'}${fmtV(tot)}</td>
       <td style="font-family:var(--mono);color:var(--muted)">${tx.commission>0?fmtV(tx.commission*(tx.currency==='USD'?rate:1)):'—'}</td>
       <td style="color:var(--muted);font-size:.7rem;max-width:100px;overflow:hidden;text-overflow:ellipsis">${tx.note||''}</td>
-      <td style="display:flex;gap:2px;align-items:center">
-        <button class="ic" onclick="editTx(${tx.id})" title="แก้ไข">✏️</button>
-        <button class="ic del" onclick="delTx(${tx.id})" title="ลบ">✕</button>
+      <td>
+        <div style="display:flex;gap:4px;align-items:center">
+          <button class="ic" onclick="editTx(${tx.id})" title="แก้ไข">✏️</button>
+          <button class="ic del" onclick="delTx(${tx.id})" title="ลบรายการนี้">🗑</button>
+        </div>
       </td>
     </tr>`;
   }).join('');
+  // Update txTableWrap height after content changes
+  const w=document.getElementById('txTableWrap');
+  if(w&&txOpen) setTimeout(()=>{ w.style.maxHeight=w.scrollHeight+'px'; },20);
 }
 
 function renderGoalGrid(){
@@ -2203,52 +2260,70 @@ function selectStockTicker(ticker){
 
 async function loadStockChart(ticker){
   const statusEl=document.getElementById('stockStat');
-  statusEl.textContent=`⏳ กำลังดึง ${ticker}...`;
+  statusEl.textContent=`⏳ กำลังดึงข้อมูล ${ticker}...`;
   document.getElementById('stockCh').style.opacity='.4';
 
   if(stockHistCache[ticker]){
     statusEl.textContent=`✅ ${ticker} · ${stockHistCache[ticker].length} จุด (cache)`;
     document.getElementById('stockCh').style.opacity='1';
     renderStockChart(ticker,stockHistCache[ticker]);
+    startStockRealtime(ticker);
     return;
   }
 
   let data=null;
-  const proxy='https://api.allorigins.win/raw?url=';
   const yfTick=YF_TICKER[ticker]||ticker;
   const cgId=CG_MAP[ticker];
 
+  // 1. Try CoinGecko for crypto
   if(cgId){
     try{
-      const r=await fetch(`https://api.coingecko.com/api/v3/coins/${cgId}/market_chart?vs_currency=usd&days=3650`,{signal:AbortSignal.timeout(10000)});
+      const r=await fetch(`https://api.coingecko.com/api/v3/coins/${cgId}/market_chart?vs_currency=usd&days=3650`,{signal:AbortSignal.timeout(12000)});
       const j=await r.json();
       if(j.prices?.length){
         data=j.prices.map(([ts,p])=>({x:new Date(ts),y:p}));
       }
-    }catch(e){}
+    }catch(e){console.warn('CoinGecko failed:',e);}
   }
 
+  // 2. Try Yahoo Finance with multiple proxies and endpoints
   if(!data){
-    try{
-      // ดึงย้อนหลังยาว 10 ปีเพื่อคลุมอดีตที่ผ่านมา
-      const url=`https://query1.finance.yahoo.com/v8/finance/chart/${yfTick}?interval=1wk&range=10y`;
-      const r=await fetch(proxy+encodeURIComponent(url),{signal:AbortSignal.timeout(10000)});
-      const j=await r.json();
-      const res=j.chart?.result?.[0];
-      if(res){
-        const ts=res.timestamp,cl=res.indicators.quote[0].close;
-        data=ts.map((t,i)=>({x:new Date(t*1000),y:cl[i]})).filter(d=>d.y!=null&&!isNaN(d.y));
+    const STOCK_PROXIES=[
+      u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,
+      u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+      u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+    ];
+    const YF_URLS=[
+      `https://query1.finance.yahoo.com/v8/finance/chart/${yfTick}?interval=1wk&range=10y`,
+      `https://query2.finance.yahoo.com/v8/finance/chart/${yfTick}?interval=1wk&range=10y`,
+      `https://query1.finance.yahoo.com/v8/finance/chart/${yfTick}?interval=1wk&range=5y`,
+    ];
+    outer:
+    for(const proxyFn of STOCK_PROXIES){
+      for(const url of YF_URLS){
+        try{
+          const r=await fetch(proxyFn(url),{signal:AbortSignal.timeout(12000)});
+          if(!r.ok) continue;
+          const j=await r.json();
+          const res=j.chart?.result?.[0];
+          if(res?.timestamp){
+            const ts=res.timestamp,cl=res.indicators.quote[0].close;
+            const parsed=ts.map((t,i)=>({x:new Date(t*1000),y:cl[i]})).filter(d=>d.y!=null&&!isNaN(d.y));
+            if(parsed.length>0){data=parsed;break outer;}
+          }
+        }catch(e){}
       }
-    }catch(e){}
+    }
   }
 
   document.getElementById('stockCh').style.opacity='1';
   if(!data||!data.length){
-    statusEl.textContent=`❌ ดึงข้อมูล ${ticker} ไม่ได้ — อาจถูกบล็อคโดย Proxy โปรดลองใหม่ภายหลัง`;
-    destroyChart('stockCh');return;
+    statusEl.innerHTML=`❌ ดึงข้อมูล <strong>${ticker}</strong> ไม่ได้ &mdash; Proxy อาจถูก Rate-limit &nbsp;<button class="btn btn-ghost" style="font-size:.68rem;padding:3px 10px" onclick="loadStockChart('${ticker}')">🔄 ลองใหม่</button>`;
+    destroyChart('stockCh');
+    return;
   }
   stockHistCache[ticker]=data;
-  statusEl.textContent=`✅ ${ticker} · กราฟย้อนหลัง ${data.length} สัปดาห์`;
+  statusEl.textContent=`✅ ${ticker} · กราฟย้อนหลัง ${data.length} จุด`;
   renderStockChart(ticker,data);
   startStockRealtime(ticker);
 }
@@ -2291,12 +2366,16 @@ async function refreshLivePrice(ticker){
       const j=await r.json();
       price=TICKER_CUR[ticker]==='USD'?j[cgId]?.usd:j[cgId]?.thb;
     }else{
-      const proxy='https://api.allorigins.win/raw?url=';
-      const url=`https://query1.finance.yahoo.com/v8/finance/chart/${yfTick}?interval=1d&range=1d`;
-      const r=await fetch(proxy+encodeURIComponent(url),{signal:AbortSignal.timeout(6000)});
-      const j=await r.json();
-      const meta=j.chart?.result?.[0]?.meta;
-      price=meta?.regularMarketPrice||meta?.previousClose;
+      const yfUrl=`https://query1.finance.yahoo.com/v8/finance/chart/${yfTick}?interval=1d&range=1d`;
+      for(const proxyFn of PROXIES){
+        try{
+          const r=await fetch(proxyFn(yfUrl),{signal:AbortSignal.timeout(6000)});
+          const j=await r.json();
+          const meta=j.chart?.result?.[0]?.meta;
+          price=meta?.regularMarketPrice||meta?.previousClose;
+          if(price) break;
+        }catch(e){}
+      }
     }
   }catch(e){}
   if(!price||!stockHistCache[ticker]?.length)return;
@@ -2419,7 +2498,14 @@ function updateCurUI(){
   document.getElementById('bUSD').classList.toggle('on',dispCur==='USD');
 }
 function onRate(){rate=parseFloat(document.getElementById('rateI').value)||33.5;renderAll();}
-function setPeriod(btn,p){document.querySelectorAll('.zb').forEach(b=>{if(b.closest('.row3'))b.classList.remove('on')});btn.classList.add('on');chartPd=p;renderMainChart();}
+function setPeriod(btn,p){
+  // Only reset zoom buttons within the same zoom-row as this button
+  const zoomRow=btn.closest('.zoom-row');
+  if(zoomRow) zoomRow.querySelectorAll('.zb').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  chartPd=p;
+  renderMainChart();
+}
 
 let txOpen=true;
 function toggleTxTable(){
@@ -2534,7 +2620,20 @@ function saveTx(){
   }
   closeModal('txMod');editId=null;renderAll();
 }
-function delTx(id){if(!confirm('ลบรายการนี้?'))return;txs=txs.filter(t=>t.id!==id);renderAll();}
+function delTx(id){
+  if(!confirm('ลบรายการนี้?'))return;
+  txs=txs.filter(t=>t.id!==id);
+  save();
+  renderAll();
+  // Update the txTableWrap height after content changes
+  setTimeout(()=>{
+    const w=document.getElementById('txTableWrap');
+    if(w&&txOpen) w.style.maxHeight=w.scrollHeight+'px';
+    // Also resize card-body parent if collapsible
+    const cb=w?.closest('.card-body');
+    if(cb&&!cb.classList.contains('collapsed')) cb.style.maxHeight='';
+  },50);
+}
 
 function exportCSV(){
   const hdr=['ประเภท','Ticker','วันที่','ราคา','จำนวน','สกุล','ค่าคอม','มูลค่า THB','หมายเหตุ'];
