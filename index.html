@@ -2689,7 +2689,11 @@ document.getElementById('aPx').addEventListener('input',updatePrev);
 document.getElementById('aQty').addEventListener('input',updatePrev);
 
 buildBgThemePicker();
-document.body.setAttribute('data-bg-theme', curBgTheme);
+if (curBgTheme) {
+  document.body.setAttribute('data-bg-theme', curBgTheme);
+} else {
+  document.body.removeAttribute('data-bg-theme');
+}
 const _bgt = BG_THEMES.find(x => x.id === curBgTheme);
 if (_bgt && document.getElementById('bgDot')) document.getElementById('bgDot').style.background = _bgt.hex;
 
@@ -2799,13 +2803,20 @@ function buildBgThemePicker() {
 function setBgTheme(id) {
   curBgTheme = id;
   localStorage.setItem('gtBgTheme', id);
+  localStorage.removeItem('pPairedTheme'); // ล้าง paired theme ออก ไม่งั้น reload แล้ว paired จะมาทับ
   document.body.setAttribute('data-bg-theme', id);
+  // ล้าง inline CSS vars ของ paired theme ที่อาจค้างอยู่บน :root
+  ['--bg','--s1','--s2','--s3','--card-bg','--card-shadow','--card-border',
+   '--border','--b2','--text','--text2','--muted'].forEach(v =>
+    document.documentElement.style.removeProperty(v));
   const t = BG_THEMES.find(x => x.id === id);
   if (t) document.getElementById('bgDot').style.background = t.hex;
   BG_THEMES.forEach(x => {
     const el = document.getElementById('btsw_' + x.id);
     if (el) el.classList.toggle('active', x.id === id);
   });
+  // ปิด active state ของ paired buttons ด้วย
+  document.querySelectorAll('.paired-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('bgThemePanel').classList.remove('open');
 }
 
