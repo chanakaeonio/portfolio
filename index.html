@@ -23,6 +23,25 @@
   --muted:#4a5568;--text:#dde4f0;--text2:#8896aa;
   --r:11px;--fn:'Noto Sans Thai',sans-serif;--mono:'JetBrains Mono',monospace;
 }
+/* ─── LOGIN OVERLAY ─── */
+#loginOverlay{display:none;position:fixed;inset:0;background:rgba(7,9,13,.97);backdrop-filter:blur(14px);z-index:9999;align-items:center;justify-content:center;flex-direction:column}
+.login-box{background:var(--s1);border:1px solid rgba(232,184,109,.25);border-radius:16px;padding:36px 40px;text-align:center;max-width:380px;width:90%;box-shadow:0 40px 80px rgba(0,0,0,.7)}
+.login-box h2{color:var(--gold);font-size:1.5rem;margin-bottom:6px}
+.login-box p{color:var(--text2);font-size:.82rem;margin-bottom:28px;line-height:1.6}
+.google-btn{display:inline-flex;align-items:center;gap:10px;background:#fff;color:#222;border:none;border-radius:10px;padding:13px 24px;font-size:.88rem;font-weight:600;cursor:pointer;transition:all .2s;width:100%;justify-content:center}
+.google-btn:hover{background:#f0f0f0;transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,0,0,.3)}
+.offline-btn{margin-top:12px;background:none;border:none;color:var(--muted);font-size:.72rem;cursor:pointer;text-decoration:underline;font-family:var(--fn)}
+.sb-user{display:flex;align-items:center;gap:7px;padding:10px 10px;border-top:1px solid var(--border);flex-shrink:0;overflow:hidden}
+.sb-user-av{width:26px;height:26px;border-radius:50%;border:1px solid var(--border);flex-shrink:0;object-fit:cover}
+.sb-user-name{font-size:.65rem;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:1;transition:opacity .15s}
+.sidebar.collapsed .sb-user-name{opacity:0;max-width:0}
+.sb-signout{background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:.58rem;padding:2px 6px;cursor:pointer;flex-shrink:0;font-family:var(--fn);transition:all .15s}
+.sb-signout:hover{border-color:var(--red);color:var(--red)}
+.cloud-status{font-size:.6rem;padding:3px 8px;border-radius:4px;font-family:var(--mono);color:var(--muted);background:rgba(255,255,255,.04);white-space:nowrap;transition:all .3s}
+.cloud-status.ok{color:var(--green);background:rgba(52,211,153,.1)}
+.cloud-status.err{color:var(--red);background:rgba(248,113,113,.1)}
+.cloud-status.saving{color:var(--gold);background:rgba(232,184,109,.1)}
+
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{font-family:var(--fn);background:var(--bg,#07090d);color:var(--text);min-height:100vh;
@@ -371,8 +390,22 @@ body{display:flex;min-height:100vh;overflow-x:hidden}
 .tab-panel{display:none}
 .tab-panel.active{display:block}
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
+<div id="loginOverlay">
+  <div class="login-box">
+    <h2>◈ Portfolio Tracker</h2>
+    <p>เข้าสู่ระบบเพื่อซิงค์ข้อมูลข้ามอุปกรณ์<br>ข้อมูลของคุณปลอดภัยใน Google Cloud</p>
+    <button class="google-btn" onclick="signInWithGoogle()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.2l6.7-6.7C35.8 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.5 13.3l7.8 6c1.8-5.4 6.9-9.8 13.7-9.8z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17z"/><path fill="#FBBC05" d="M10.3 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6C.9 16.3 0 20 0 24s.9 7.7 2.5 10.7l7.8-6z"/><path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7.5-5.8c-2 1.4-4.6 2.2-7.7 2.2-6.8 0-12.6-4.6-14.7-10.7l-7.8 6C6.6 42.6 14.6 48 24 48z"/></svg>
+      เข้าสู่ระบบด้วย Google
+    </button>
+    <button class="offline-btn" onclick="useOffline()">ใช้แบบออฟไลน์ (ไม่ซิงค์)</button>
+  </div>
+</div>
 <nav class="sidebar" id="sidebar">
   <div class="sb-hdr">
     <span class="sb-logo">◈ Portfolio</span>
@@ -419,6 +452,11 @@ body{display:flex;min-height:100vh;overflow-x:hidden}
       <span class="sb-lbl">ตลาดทั่วโลก</span>
     </button>
   </div>
+  <div class="sb-user" id="sbUser" style="display:none">
+    <img class="sb-user-av" id="sbAvatar" src="" alt="">
+    <span class="sb-user-name" id="sbName"></span>
+    <button class="sb-signout" onclick="signOut()">ออก</button>
+  </div>
 </nav>
 <div class="wrap">
 
@@ -459,6 +497,7 @@ body{display:flex;min-height:100vh;overflow-x:hidden}
     </div>
     <button class="btn btn-blue" onclick="fetchAllPrices()">🔄 ดึงราคา</button>
     <span class="price-status" id="pxStatus">—</span>
+    <span class="cloud-status" id="cloudStatus" style="display:none">☁</span>
     <button class="btn btn-ghost" onclick="exportCSV()">⬇ CSV</button>
     <button class="btn btn-ghost" onclick="openDataDoctor()" title="ตรวจสอบและซ่อมข้อมูล">🩺 ตรวจข้อมูล</button>
     <button class="btn btn-gold"  onclick="openAdd()">+ เพิ่มรายการ</button>
@@ -1438,6 +1477,7 @@ const save=()=>{
   localStorage.setItem(portKey('pGOALv5'),JSON.stringify(gVal));
   const cashEl=document.getElementById('cashI');
   if(cashEl) localStorage.setItem(portKey('pCASHv5'), cashEl.value||'0');
+  if(typeof scheduleCloudSave==='function') scheduleCloudSave();
 };
 
 function onCashChange(inp){
@@ -3366,6 +3406,187 @@ document.addEventListener('click', e => {
   if (p && !p.contains(e.target) && b && !b.contains(e.target))
     p.classList.remove('open');
 });
+
+
+/* ═══════════════════════════════════════════════════════
+   FIREBASE — CLOUD SYNC (config จริง)
+═══════════════════════════════════════════════════════ */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDEOsCZZap_hx8QyDTuFR0DelS2PKhP0fE",
+  authDomain: "pp-investing-port.firebaseapp.com",
+  projectId: "pp-investing-port",
+  storageBucket: "pp-investing-port.firebasestorage.app",
+  messagingSenderId: "483106370381",
+  appId: "1:483106370381:web:5296be3689726cac21fd04",
+  measurementId: "G-BTX52Z96G7"
+};
+
+let _auth=null,_db=null;
+let currentUser=null,cloudSaveTimer=null,portListener=null;
+let offlineMode=false;
+
+function initFirebase(){
+  try{
+    firebase.initializeApp(FIREBASE_CONFIG);
+    _auth=firebase.auth();
+    _db=firebase.firestore();
+    _auth.onAuthStateChanged(onAuthChanged);
+    document.getElementById('loginOverlay').style.display='flex';
+  }catch(e){console.warn('Firebase init:',e);offlineMode=true;}
+}
+
+async function onAuthChanged(user){
+  const ov=document.getElementById('loginOverlay');
+  if(user){
+    currentUser=user;
+    ov.style.display='none';
+    updateUserUI(user);
+    await loadFromCloud();
+  }else{
+    currentUser=null;
+    if(!offlineMode) ov.style.display='flex';
+    updateUserUI(null);
+  }
+}
+
+function updateUserUI(user){
+  const sb=document.getElementById('sbUser');
+  const av=document.getElementById('sbAvatar');
+  const nm=document.getElementById('sbName');
+  const cs=document.getElementById('cloudStatus');
+  if(user){
+    if(sb)sb.style.display='flex';
+    if(av)av.src=user.photoURL||'';
+    if(nm)nm.textContent=user.displayName||user.email;
+    if(cs){cs.style.display='';cs.textContent='☁ พร้อมซิงค์';}
+  }else{
+    if(sb)sb.style.display='none';
+    if(cs)cs.style.display='none';
+  }
+}
+
+function signInWithGoogle(){
+  const provider=new firebase.auth.GoogleAuthProvider();
+  _auth.signInWithPopup(provider).catch(e=>alert('เข้าสู่ระบบไม่ได้: '+e.message));
+}
+
+function signOut(){
+  if(!confirm('ออกจากระบบ?'))return;
+  if(portListener){portListener();portListener=null;}
+  _auth.signOut();
+}
+
+function useOffline(){
+  offlineMode=true;
+  document.getElementById('loginOverlay').style.display='none';
+}
+
+async function loadFromCloud(){
+  if(!currentUser||!_db)return;
+  setCloudStatus('saving','⏳ โหลดข้อมูล...');
+  try{
+    const uid=currentUser.uid;
+    const metaSnap=await _db.collection('users').doc(uid).get();
+    if(metaSnap.exists){
+      const m=metaSnap.data();
+      if(m.portfolios?.length)portfolios=m.portfolios;
+      if(m.currentPortId!=null){
+        currentPortId=m.currentPortId;
+        if(!portfolios.find(p=>p.id===currentPortId))currentPortId=portfolios[0].id;
+      }
+      if(m.rate){rate=m.rate;const ri=document.getElementById('rateI');if(ri)ri.value=rate.toFixed(2);}
+      if(m.dispCur){dispCur=m.dispCur;updateCurUI();}
+    }
+    await loadPortDataFromCloud(currentPortId);
+    setupPortListener();
+    setCloudStatus('ok','☁ ซิงค์แล้ว');
+  }catch(e){
+    console.error('loadFromCloud:',e);
+    setCloudStatus('err','❌ โหลดไม่ได้');
+  }
+}
+
+async function loadPortDataFromCloud(portId){
+  if(!currentUser||!_db)return;
+  const snap=await _db.collection('users').doc(currentUser.uid).collection('data').doc('port_'+portId).get();
+  if(snap.exists){
+    const d=snap.data();
+    txs=d.txs||[];
+    prices=d.prices||{...DEF_P};
+    actuals=d.actuals||{};
+    if(d.gVal)gVal=d.gVal;
+    const cashEl=document.getElementById('cashI');
+    if(cashEl)cashEl.value=d.cash||'0';
+    localStorage.setItem(portKey('pTXv5'),JSON.stringify(txs));
+    localStorage.setItem(portKey('pPXv5'),JSON.stringify(prices));
+    localStorage.setItem(portKey('pACv5'),JSON.stringify(actuals));
+    localStorage.setItem(portKey('pGOALv5'),JSON.stringify(gVal));
+  }
+  const s=(id,v)=>{const e=document.getElementById(id);if(e)e.value=v;};
+  s('gI',gVal.gI);s('gI_s',gVal.gI);s('gM',gVal.gM);s('gM_s',gVal.gM);
+  s('gR',gVal.gR);s('gR_s',gVal.gR);s('gYr',gVal.gYr);s('gYr_s',gVal.gYr);
+  s('gSY',gVal.gSY);s('gSM',gVal.gSM);
+  renderPortBar();renderAll();
+}
+
+async function saveToCloud(){
+  if(!currentUser||!_db)return;
+  const uid=currentUser.uid;
+  const cashEl=document.getElementById('cashI');
+  const batch=_db.batch();
+  batch.set(_db.collection('users').doc(uid),{
+    portfolios,currentPortId,rate,dispCur,
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+  });
+  batch.set(_db.collection('users').doc(uid).collection('data').doc('port_'+currentPortId),{
+    txs,prices,actuals,gVal,
+    cash:cashEl?.value||'0',
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+  });
+  await batch.commit();
+  setCloudStatus('ok','☁ ซิงค์แล้ว');
+}
+
+function scheduleCloudSave(){
+  if(!currentUser||offlineMode)return;
+  setCloudStatus('saving','⏳ กำลังบันทึก...');
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer=setTimeout(async()=>{
+    try{await saveToCloud();}
+    catch(e){console.error(e);setCloudStatus('err','❌ บันทึกไม่ได้');}
+  },2500);
+}
+
+function setupPortListener(){
+  if(portListener){portListener();portListener=null;}
+  if(!currentUser||!_db)return;
+  let skip=true;
+  portListener=_db.collection('users').doc(currentUser.uid)
+    .collection('data').doc('port_'+currentPortId)
+    .onSnapshot(snap=>{
+      if(skip){skip=false;return;}
+      if(!snap.exists)return;
+      const d=snap.data();
+      txs=d.txs||txs;
+      prices=d.prices||prices;
+      actuals=d.actuals||actuals;
+      if(d.gVal)gVal=d.gVal;
+      const cashEl=document.getElementById('cashI');
+      if(cashEl&&d.cash)cashEl.value=d.cash;
+      renderAll();
+      setCloudStatus('ok','☁ อัพเดทแล้ว');
+    });
+}
+
+function setCloudStatus(type,msg){
+  const el=document.getElementById('cloudStatus');
+  if(!el)return;
+  el.style.display='';el.textContent=msg;
+  el.className='cloud-status'+(type==='ok'?' ok':type==='err'?' err':type==='saving'?' saving':'');
+}
+
+// เริ่ม Firebase
+initFirebase();
 
 </script>
 </body>
