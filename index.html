@@ -791,14 +791,30 @@ body{display:flex;min-height:100vh;overflow-x:hidden}
 
 <div id="tab-history" class="tab-panel">
 <div class="card full">
-  <div class="card-h">
+  <div class="card-h" style="flex-wrap:wrap;gap:8px">
     <h3>📋 ประวัติรายการ <span id="txCount" class="note"></span></h3>
+    <!-- ปุ่มซื้อ/ขาย/ขายทั้งหมด -->
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <button class="btn" onclick="openBuy()"
+        style="background:rgba(52,211,153,.15);border:1px solid rgba(52,211,153,.35);color:var(--green);font-size:.75rem;padding:6px 14px;font-weight:700">
+        🟢 ซื้อ
+      </button>
+      <button class="btn" onclick="openSell()"
+        style="background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.35);color:var(--red);font-size:.75rem;padding:6px 14px;font-weight:700">
+        🔴 ขาย
+      </button>
+      <button class="btn btn-ghost" onclick="openSellAll()" title="ขายหุ้นทั้งหมดของ ticker ที่เลือก"
+        style="font-size:.72rem;padding:6px 12px">
+        💰 ขายทั้งหมด
+      </button>
+    </div>
+    <!-- Search + ซ่อน -->
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto">
       <div style="position:relative">
         <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.68rem;pointer-events:none"></i>
         <input id="txSearch" type="text" placeholder="ค้นหา Ticker / ประเภท / หมายเหตุ..."
           oninput="onTxSearch()"
-          style="background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:6px 10px 6px 28px;color:var(--text);font-family:var(--fn);font-size:.75rem;outline:none;width:230px;transition:border-color .2s"
+          style="background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:6px 10px 6px 28px;color:var(--text);font-family:var(--fn);font-size:.75rem;outline:none;width:200px;transition:border-color .2s"
           onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border)'">
       </div>
       <button class="btn btn-ghost" id="txToggleBtn" onclick="toggleTxTable()" style="font-size:.72rem;padding:4px 12px">▲ ซ่อน</button>
@@ -2000,6 +2016,116 @@ document.addEventListener('click',e=>{
     if(btn){btn.style.background='';btn.style.borderColor='';btn.style.color='';}
   }
 });
+
+
+/* ─── QUICK BUY / SELL ─── */
+function openBuy(){
+  openAdd();
+  document.getElementById('aType').value='Buy';
+}
+function openSell(){
+  openAdd();
+  document.getElementById('aType').value='Sell';
+}
+
+/* ─── SELL ALL ─── */
+function getHoldings(){
+  // คำนวณ holdings ปัจจุบัน: Buy - Sell per ticker
+  const h={};
+  txs.forEach(tx=>{
+    if(!h[tx.ticker]) h[tx.ticker]=0;
+    h[tx.ticker]+=(tx.type==='Buy'?tx.shares:-tx.shares);
+  });
+  // กรองเฉพาะที่ถือหุ้นอยู่ (> 0)
+  return Object.fromEntries(Object.entries(h).filter(([,v])=>v>0.000001));
+}
+
+function openSellAll(){
+  const holdings=getHoldings();
+  const tickers=Object.keys(holdings);
+  if(!tickers.length){alert('ไม่มีหุ้นที่ถือในพอร์ตตอนนี้');return;}
+  // Populate ticker select
+  const sel=document.getElementById('saTickerSel');
+  sel.innerHTML='<option value="">— เลือก Ticker —</option>'+
+    tickers.map(t=>`<option value="${t}">${t} (${fmtShares(holdings[t])} หุ้น)</option>`).join('');
+  // Reset
+  document.getElementById('saHoldingInfo').style.display='none';
+  document.getElementById('saPriceRow').style.display='none';
+  document.getElementById('saDateRow').style.display='none';
+  document.getElementById('saConfirmBtn').style.display='none';
+  document.getElementById('saSellDate').value=new Date().toISOString().slice(0,10);
+  document.getElementById('saSellPrice').value='';
+  openModal('sellAllMod');
+}
+
+function onSaTickerChange(){
+  const ticker=document.getElementById('saTickerSel').value;
+  if(!ticker){
+    document.getElementById('saHoldingInfo').style.display='none';
+    document.getElementById('saPriceRow').style.display='none';
+    document.getElementById('saDateRow').style.display='none';
+    document.getElementById('saConfirmBtn').style.display='none';
+    return;
+  }
+  const holdings=getHoldings();
+  const shares=holdings[ticker]||0;
+  const curPrice=prices[ticker]||0;
+  const cur=TICKER_CUR[ticker]||'THB';
+  document.getElementById('saSharesTotal').textContent=fmtShares(shares)+' หุ้น';
+  const dispPrice=cur==='USD'?(curPrice/rate) : curPrice;
+  document.getElementById('saCurrentPrice').textContent=
+    curPrice>0?(cur==='USD'?'$':'฿')+dispPrice.toLocaleString('th-TH',{maximumFractionDigits:4}):'ไม่มีราคา';
+  // Auto-fill price
+  document.getElementById('saSellPrice').value=curPrice>0?dispPrice.toFixed(cur==='USD'?4:2):'';
+  document.getElementById('saCur').value=cur;
+  onSaPriceChange();
+  document.getElementById('saHoldingInfo').style.display='';
+  document.getElementById('saPriceRow').style.display='';
+  document.getElementById('saDateRow').style.display='';
+  document.getElementById('saConfirmBtn').style.display='';
+}
+
+function onSaPriceChange(){
+  const ticker=document.getElementById('saTickerSel').value; if(!ticker) return;
+  const holdings=getHoldings();
+  const shares=holdings[ticker]||0;
+  const px=parseFloat(document.getElementById('saSellPrice').value)||0;
+  const cur=document.getElementById('saCur').value;
+  if(px>0){
+    const totTHB=cur==='USD'?px*shares*rate:px*shares;
+    document.getElementById('saTotalValue').textContent='฿'+totTHB.toLocaleString('th-TH',{maximumFractionDigits:2})+(cur==='USD'?` ($${(px*shares).toLocaleString('en-US',{maximumFractionDigits:2})})`: '');
+  }else{
+    document.getElementById('saTotalValue').textContent='—';
+  }
+}
+
+function confirmSellAll(){
+  const ticker=document.getElementById('saTickerSel').value; if(!ticker) return;
+  const holdings=getHoldings();
+  const shares=holdings[ticker];
+  if(!shares||shares<=0){alert('ไม่มีหุ้นที่ถืออยู่');return;}
+  let px=parseFloat(document.getElementById('saSellPrice').value);
+  const cur=document.getElementById('saCur').value;
+  const dateVal=document.getElementById('saSellDate').value;
+  if(!px){
+    // ใช้ราคาตลาดล่าสุด
+    const mp=prices[ticker]||0;
+    if(!mp){alert('กรุณาระบุราคาขาย');return;}
+    px=cur==='USD'?mp/rate:mp;
+  }
+  if(!confirm(`ยืนยัน: ขาย ${fmtShares(shares)} หุ้น ${ticker} ที่ราคา ${cur==='USD'?'$':'฿'}${px.toLocaleString()} ?`)) return;
+  const newTx={
+    id:Date.now(),type:'Sell',
+    ticker,price:px,shares,
+    currency:cur,commission:0,
+    date:dateVal,note:'Sell All'
+  };
+  txs.push(newTx);
+  save(); renderAll();
+  closeModal('sellAllMod');
+  // flash feedback
+  showTab('history');
+}
 
 function renderAll(){
   const run=(fn)=>{try{fn();}catch(e){console.warn('[renderAll]',fn.name,e);}};
@@ -3814,6 +3940,66 @@ window.addEventListener('resize',()=>{if(window.innerWidth>768)closeMobileSideba
     <i class="bni fa-solid fa-globe"></i><span>ตลาด</span>
   </button>
 </nav>
+
+<!-- ─── SELL ALL MODAL ─── -->
+<div class="ov" id="sellAllMod" onclick="bgClose(event,'sellAllMod')">
+<div class="modal" style="width:min(460px,96%)">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+    <h2 style="font-size:1rem;font-weight:700;color:var(--text)">💰 ขายหุ้นทั้งหมด</h2>
+    <button class="ic" onclick="closeModal('sellAllMod')">✕</button>
+  </div>
+  <!-- เลือก Ticker -->
+  <div style="margin-bottom:14px">
+    <label style="font-size:.75rem;color:var(--text2);display:block;margin-bottom:6px">เลือกหุ้นที่ต้องการขาย</label>
+    <select id="saTickerSel" onchange="onSaTickerChange()"
+      style="width:100%;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--fn);font-size:.85rem;outline:none">
+      <option value="">— เลือก Ticker —</option>
+    </select>
+  </div>
+  <!-- แสดงจำนวนหุ้นที่ถือ -->
+  <div id="saHoldingInfo" style="display:none;background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.2);border-radius:8px;padding:12px 14px;margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+      <div>
+        <div style="font-size:.7rem;color:var(--text2);margin-bottom:2px">จำนวนหุ้นที่ถือทั้งหมด</div>
+        <div id="saSharesTotal" style="font-size:1.4rem;font-weight:700;color:var(--green);font-family:var(--mono)">0</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:.7rem;color:var(--text2);margin-bottom:2px">ราคาตลาดปัจจุบัน</div>
+        <div id="saCurrentPrice" style="font-size:.95rem;font-weight:600;color:var(--text)">—</div>
+      </div>
+    </div>
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(52,211,153,.15)">
+      <div style="font-size:.7rem;color:var(--text2);margin-bottom:2px">มูลค่าโดยประมาณที่จะได้รับ</div>
+      <div id="saTotalValue" style="font-size:1.1rem;font-weight:700;color:var(--gold)">—</div>
+    </div>
+  </div>
+  <!-- ราคาขาย -->
+  <div id="saPriceRow" style="display:none;margin-bottom:14px">
+    <label style="font-size:.75rem;color:var(--text2);display:block;margin-bottom:6px">ราคาขาย/หน่วย</label>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input type="number" id="saSellPrice" oninput="onSaPriceChange()" placeholder="0.00"
+        style="flex:1;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--mono);font-size:.9rem;outline:none">
+      <select id="saCur" onchange="onSaPriceChange()"
+        style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:9px 10px;color:var(--text);font-family:var(--fn);font-size:.8rem;outline:none">
+        <option>THB</option><option>USD</option>
+      </select>
+    </div>
+    <div style="margin-top:6px;font-size:.68rem;color:var(--muted)">* ระบบจะใช้ราคาตลาดล่าสุดโดยอัตโนมัติ ถ้าปล่อยว่างไว้</div>
+  </div>
+  <!-- วันที่ขาย -->
+  <div id="saDateRow" style="display:none;margin-bottom:18px">
+    <label style="font-size:.75rem;color:var(--text2);display:block;margin-bottom:6px">วันที่ขาย</label>
+    <input type="date" id="saSellDate"
+      style="width:100%;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--fn);font-size:.85rem;outline:none;box-sizing:border-box">
+  </div>
+  <div style="display:flex;gap:8px;justify-content:flex-end">
+    <button class="btn btn-ghost" onclick="closeModal('sellAllMod')">ยกเลิก</button>
+    <button class="btn" id="saConfirmBtn" onclick="confirmSellAll()" style="display:none;background:rgba(248,113,113,.2);border:1px solid rgba(248,113,113,.4);color:var(--red);font-weight:700">
+      🔴 ยืนยันขายทั้งหมด
+    </button>
+  </div>
+</div>
+</div>
 
 </body>
 </html>
