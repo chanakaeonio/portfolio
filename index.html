@@ -154,6 +154,9 @@ header{display:flex;align-items:center;justify-content:space-between;flex-wrap:w
 .tx-t td{padding:8px 9px;border-bottom:1px solid var(--b2);color:var(--text2);white-space:nowrap;vertical-align:middle}
 .tx-t tr:last-child td{border-bottom:none}
 .tx-t tr:hover td{background:rgba(255,255,255,.01)}
+.tx-t tr.tx-selected td{background:rgba(232,184,109,.07)!important}
+.tx-t tr[data-txid]{cursor:pointer}
+.tx-t tr[data-txid]:hover td{background:rgba(232,184,109,.04)}
 .type-b{color:var(--green);background:rgba(52,211,153,.1);border-radius:3px;padding:2px 5px;font-size:.62rem;font-weight:700}
 .type-s{color:var(--red);background:rgba(248,113,113,.1);border-radius:3px;padding:2px 5px;font-size:.62rem;font-weight:700}
 .chip{display:inline-flex;background:var(--s2);border:1px solid var(--border);border-radius:4px;padding:2px 6px;font-size:.65rem;font-weight:700;color:var(--gold)}
@@ -426,7 +429,7 @@ body{display:flex;min-height:100vh;overflow-x:hidden}
 <header>
   <div class="brand"><h1>◈ Portfolio Tracker</h1><p>DCA Investment Dashboard</p></div>
   <div class="hdr-r">
-    <div class="pill"><label>USD/THB</label><input type="number" id="rateI" value="33" step=".1" onchange="onRate()"></div>
+    <div class="pill" style="gap:6px"><label>USD/THB</label><input type="number" id="rateI" value="33" step=".1" onchange="onRate()"><span id="rateStatus" title="คลิกเพื่อรีเฟรชอัตราแลกเปลี่ยน" style="font-size:.58rem;font-family:var(--mono);padding:1px 5px;border-radius:3px;background:rgba(255,255,255,.06);color:var(--muted);cursor:pointer;white-space:nowrap" onclick="fetchRate(true)">—</span></div>
     <div class="pill"><label>💵 เงินสด</label><input class="cash" type="number" id="cashI" value="0" step="100" placeholder="0" onchange="onCashChange(this)"></div>
     <div class="tog">
       <button class="tog-btn on" id="bTHB" onclick="setCur('THB')">฿ THB</button>
@@ -604,12 +607,32 @@ body{display:flex;min-height:100vh;overflow-x:hidden}
 <div class="card full">
   <div class="card-h">
     <h3>📋 ประวัติรายการ <span id="txCount" class="note"></span></h3>
-    <button class="btn btn-ghost" id="txToggleBtn" onclick="toggleTxTable()" style="font-size:.72rem;padding:4px 12px">▲ ซ่อน</button>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto">
+      <div style="position:relative">
+        <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.68rem;pointer-events:none"></i>
+        <input id="txSearch" type="text" placeholder="ค้นหา Ticker / ประเภท / หมายเหตุ..."
+          oninput="onTxSearch()"
+          style="background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:6px 10px 6px 28px;color:var(--text);font-family:var(--fn);font-size:.75rem;outline:none;width:230px;transition:border-color .2s"
+          onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border)'">
+      </div>
+      <button class="btn btn-ghost" id="txToggleBtn" onclick="toggleTxTable()" style="font-size:.72rem;padding:4px 12px">▲ ซ่อน</button>
+    </div>
   </div>
+
+  <div id="txBulkBar" style="display:none;align-items:center;gap:10px;flex-wrap:wrap;background:rgba(232,184,109,.07);border:1px solid rgba(232,184,109,.2);border-radius:8px;padding:8px 14px;margin-bottom:10px">
+    <span id="txSelCount" style="font-size:.78rem;font-weight:600;color:var(--gold)">เลือก 0 รายการ</span>
+    <div style="flex:1"></div>
+    <button class="btn" onclick="deleteSelected()" style="background:rgba(248,113,113,.15);border:1px solid rgba(248,113,113,.35);color:var(--red);font-size:.72rem;padding:5px 14px">🗑 ลบที่เลือก</button>
+    <button class="btn btn-ghost" onclick="clearSelection()" style="font-size:.72rem;padding:5px 12px">ยกเลิก</button>
+  </div>
+
   <div id="txTableWrap">
   <div class="tx-w">
     <table class="tx-t">
       <thead><tr>
+        <th style="width:36px;text-align:center">
+          <input type="checkbox" id="txChkAll" onchange="toggleSelectAll(this)" style="accent-color:var(--gold);width:14px;height:14px;cursor:pointer">
+        </th>
         <th>ประเภท</th><th>Ticker</th><th>วันที่</th>
         <th>ราคา/หน่วย (THB)</th><th>ราคา/หน่วย (USD)</th>
         <th>จำนวน</th><th>มูลค่ารวม</th><th>ค่าคอม</th><th>หมายเหตุ</th><th></th>
@@ -2078,19 +2101,106 @@ function onPrCh(inp){
   renderAll();
 }
 
+/* ─── TX SEARCH & MULTI-SELECT STATE ─── */
+let txSearchQ = '';
+let selectedIds = new Set();
+
+function onTxSearch() {
+  txSearchQ = (document.getElementById('txSearch')?.value || '').trim().toLowerCase();
+  selectedIds.clear();
+  renderTxTable();
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('txBulkBar');
+  const cnt = document.getElementById('txSelCount');
+  const n = selectedIds.size;
+  if (bar) bar.style.display = n > 0 ? 'flex' : 'none';
+  if (cnt) cnt.textContent = `เลือก ${n} รายการ`;
+  // Update header checkbox state
+  const chkAll = document.getElementById('txChkAll');
+  if (chkAll) {
+    const visible = getFilteredTxs();
+    if (!visible.length) { chkAll.checked = false; chkAll.indeterminate = false; }
+    else if (visible.every(tx => selectedIds.has(tx.id))) { chkAll.checked = true; chkAll.indeterminate = false; }
+    else if (visible.some(tx => selectedIds.has(tx.id))) { chkAll.checked = false; chkAll.indeterminate = true; }
+    else { chkAll.checked = false; chkAll.indeterminate = false; }
+  }
+}
+
+function getFilteredTxs() {
+  const q = txSearchQ;
+  const sorted = [...txs].sort((a,b) => b.date.localeCompare(a.date));
+  if (!q) return sorted;
+  return sorted.filter(tx =>
+    tx.ticker.toLowerCase().includes(q) ||
+    (tx.type === 'Buy' ? 'ซื้อ buy' : 'ขาย sell').includes(q) ||
+    tx.date.includes(q) ||
+    (tx.note || '').toLowerCase().includes(q)
+  );
+}
+
+function toggleSelectAll(chk) {
+  const visible = getFilteredTxs();
+  if (chk.checked) visible.forEach(tx => selectedIds.add(tx.id));
+  else visible.forEach(tx => selectedIds.delete(tx.id));
+  renderTxTable();
+}
+
+function toggleSelectTx(id) {
+  if (selectedIds.has(id)) selectedIds.delete(id);
+  else selectedIds.add(id);
+  updateBulkBar();
+  // sync row highlight
+  const row = document.querySelector(`tr[data-txid="${id}"]`);
+  if (row) row.classList.toggle('tx-selected', selectedIds.has(id));
+}
+
+function clearSelection() {
+  selectedIds.clear();
+  renderTxTable();
+}
+
+function deleteSelected() {
+  if (!selectedIds.size) return;
+  if (!confirm(`ลบ ${selectedIds.size} รายการที่เลือก?`)) return;
+  txs = txs.filter(t => !selectedIds.has(t.id));
+  selectedIds.clear();
+  save(); renderAll();
+}
+
 function renderTxTable(){
-  const sorted=[...txs].sort((a,b)=>b.date.localeCompare(a.date));
-  document.getElementById('txCount').textContent=sorted.length+' รายการ';
-  if(!sorted.length){document.getElementById('txBody').innerHTML=`<tr><td colspan="10" style="text-align:center;padding:36px;color:var(--muted)">ยังไม่มีรายการ — กดปุ่ม "+ เพิ่มรายการ" เพื่อเริ่มต้น</td></tr>`;
-    // Reset txTableWrap height
+  const filtered = getFilteredTxs();
+  const total = txs.length;
+  const q = txSearchQ;
+  document.getElementById('txCount').textContent =
+    q ? `${filtered.length} / ${total} รายการ` : `${total} รายการ`;
+
+  if(!total){
+    document.getElementById('txBody').innerHTML=`<tr><td colspan="11" style="text-align:center;padding:36px;color:var(--muted)">ยังไม่มีรายการ — กดปุ่ม "+ เพิ่มรายการ" เพื่อเริ่มต้น</td></tr>`;
     const w=document.getElementById('txTableWrap');
     if(w&&txOpen) w.style.maxHeight=w.scrollHeight+'px';
-    return;
+    updateBulkBar(); return;
   }
-  document.getElementById('txBody').innerHTML=sorted.map(tx=>{
+  if(!filtered.length){
+    document.getElementById('txBody').innerHTML=`<tr><td colspan="11" style="text-align:center;padding:36px;color:var(--muted)">ไม่พบรายการที่ตรงกับ "<strong style="color:var(--gold)">${q}</strong>"</td></tr>`;
+    const w=document.getElementById('txTableWrap');
+    if(w&&txOpen) w.style.maxHeight=w.scrollHeight+'px';
+    updateBulkBar(); return;
+  }
+
+  document.getElementById('txBody').innerHTML=filtered.map(tx=>{
     const pTHB=prTHB(tx),pUSD=prUSD(tx),tot=pTHB*tx.shares;
     const isSuspect=pTHB>1000000;
-    return `<tr style="${isSuspect?'background:rgba(248,113,113,.05);border-left:2px solid rgba(248,113,113,.4)':''}">
+    const isSelected=selectedIds.has(tx.id);
+    return `<tr data-txid="${tx.id}" class="${isSelected?'tx-selected':''}"
+      style="${isSuspect?'border-left:2px solid rgba(248,113,113,.4);':''}"
+      onclick="toggleSelectTx(${tx.id})">
+      <td style="text-align:center" onclick="event.stopPropagation();toggleSelectTx(${tx.id})">
+        <input type="checkbox" ${isSelected?'checked':''} onchange="toggleSelectTx(${tx.id})"
+          onclick="event.stopPropagation()"
+          style="accent-color:var(--gold);width:14px;height:14px;cursor:pointer">
+      </td>
       <td><span class="type-${tx.type==='Buy'?'b':'s'}">${tx.type==='Buy'?'ซื้อ':'ขาย'}</span></td>
       <td><span class="chip" style="color:var(--gold)">${tx.ticker}</span></td>
       <td style="color:var(--text2)">${fmtDate(tx.date)}</td>
@@ -2103,7 +2213,7 @@ function renderTxTable(){
       <td style="font-family:var(--mono)" class="${tx.type==='Buy'?'red':'green'}">${tx.type==='Buy'?'-':'+'}${fmtV(tot)}</td>
       <td style="font-family:var(--mono);color:var(--muted)">${tx.commission>0?fmtV(tx.commission*(tx.currency==='USD'?rate:1)):'—'}</td>
       <td style="color:var(--muted);font-size:.7rem;max-width:100px;overflow:hidden;text-overflow:ellipsis">${tx.note||''}</td>
-      <td>
+      <td onclick="event.stopPropagation()">
         <div style="display:flex;gap:4px;align-items:center">
           <button class="ic" onclick="editTx(${tx.id})" title="แก้ไข">✏️</button>
           <button class="ic del" onclick="delTx(${tx.id})" title="ลบรายการนี้">🗑</button>
@@ -2111,7 +2221,8 @@ function renderTxTable(){
       </td>
     </tr>`;
   }).join('');
-  // Update txTableWrap height after content changes
+
+  updateBulkBar();
   const w=document.getElementById('txTableWrap');
   if(w&&txOpen) setTimeout(()=>{ w.style.maxHeight=w.scrollHeight+'px'; },20);
 }
@@ -2497,7 +2608,95 @@ function updateCurUI(){
   document.getElementById('bTHB').classList.toggle('on',dispCur==='THB');
   document.getElementById('bUSD').classList.toggle('on',dispCur==='USD');
 }
-function onRate(){rate=parseFloat(document.getElementById('rateI').value)||33.5;renderAll();}
+function onRate(){rate=parseFloat(document.getElementById('rateI').value)||33.5;save();renderAll();}
+
+/* ═══════════════════════════════════════════
+   REAL-TIME USD/THB RATE FETCH
+═══════════════════════════════════════════ */
+let rateRefreshTimer = null;
+
+async function fetchRate(manual=false) {
+  const statusEl = document.getElementById('rateStatus');
+  if (statusEl) {
+    statusEl.textContent = '⏳';
+    statusEl.style.color = 'var(--text2)';
+    statusEl.style.background = 'rgba(255,255,255,.06)';
+  }
+
+  const sources = [
+    // Source 1: open.er-api.com (free, no key)
+    async () => {
+      const r = await fetch('https://open.er-api.com/v6/latest/USD', {signal: AbortSignal.timeout(6000)});
+      const j = await r.json();
+      if (j?.rates?.THB > 0) return j.rates.THB;
+      return null;
+    },
+    // Source 2: Frankfurter API (free, no key)
+    async () => {
+      const r = await fetch('https://api.frankfurter.app/latest?from=USD&to=THB', {signal: AbortSignal.timeout(6000)});
+      const j = await r.json();
+      if (j?.rates?.THB > 0) return j.rates.THB;
+      return null;
+    },
+    // Source 3: Yahoo Finance THBUSD=X via proxy
+    async () => {
+      const url = 'https://query1.finance.yahoo.com/v8/finance/chart/THBUSD=X?interval=1d&range=1d';
+      for (const proxyFn of PROXIES) {
+        try {
+          const r = await fetch(proxyFn(url), {signal: AbortSignal.timeout(6000)});
+          const j = await r.json();
+          const p = j?.chart?.result?.[0]?.meta?.regularMarketPrice;
+          if (p && p > 0) return +(1 / p).toFixed(4);
+        } catch(e) {}
+      }
+      return null;
+    },
+  ];
+
+  let newRate = null;
+  for (const src of sources) {
+    try {
+      newRate = await src();
+      if (newRate) break;
+    } catch(e) {}
+  }
+
+  if (newRate && newRate > 20 && newRate < 60) {
+    rate = +newRate.toFixed(4);
+    const rateEl = document.getElementById('rateI');
+    if (rateEl) rateEl.value = rate.toFixed(2);
+    save();
+    renderAll();
+
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
+    if (statusEl) {
+      statusEl.textContent = `● LIVE ${timeStr}`;
+      statusEl.style.color = '#34d399';
+      statusEl.style.background = 'rgba(52,211,153,.12)';
+      statusEl.title = `อัพเดทล่าสุด ${timeStr} · คลิกเพื่อรีเฟรช`;
+    }
+    if (manual) {
+      // flash feedback
+      if (statusEl) { statusEl.style.transform = 'scale(1.1)'; setTimeout(()=>{ if(statusEl) statusEl.style.transform = ''; }, 200); }
+    }
+  } else {
+    if (statusEl) {
+      statusEl.textContent = '● manual';
+      statusEl.style.color = 'var(--muted)';
+      statusEl.style.background = 'rgba(255,255,255,.06)';
+      statusEl.title = 'ดึงอัตราแลกเปลี่ยนไม่ได้ · คลิกเพื่อลองใหม่';
+    }
+  }
+
+  // Auto-refresh ทุก 30 นาที
+  if (!rateRefreshTimer) {
+    rateRefreshTimer = setInterval(() => {
+      if (document.visibilityState !== 'hidden') fetchRate();
+    }, 30 * 60 * 1000);
+  }
+}
+
 function setPeriod(btn,p){
   // Only reset zoom buttons within the same zoom-row as this button
   const zoomRow=btn.closest('.zoom-row');
@@ -2623,6 +2822,7 @@ function saveTx(){
 function delTx(id){
   if(!confirm('ลบรายการนี้?'))return;
   txs=txs.filter(t=>t.id!==id);
+  selectedIds.delete(id);
   save();
   renderAll();
   // Update the txTableWrap height after content changes
@@ -2711,6 +2911,9 @@ setTimeout(()=>{
 
 // Auto-fetch prices on load
 setTimeout(fetchAllPrices,1200);
+
+// Auto-fetch USD/THB rate on load
+setTimeout(()=>fetchRate(), 800);
 
 // Auto-load กราฟหุ้นตัวแรกอัตโนมัติ
 setTimeout(()=>{
